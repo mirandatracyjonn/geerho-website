@@ -8,24 +8,39 @@
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="style.css">
+  <script type="module" src="home.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="site-header"><div class="inner">
   <a class="brand" href="index.html"><img src="favicon.png" alt="" width="28" height="28">Geerho</a>
   <nav aria-label="Site">
+    <a href="browse.html">Browse</a>
+    <a href="about.html">About</a>
+    <a href="news.html">News</a>
+    <a href="investors.html">Investors</a>
     <a href="faq.html">FAQ</a>
-    <a href="contact.html">Contact</a>
-    <a href="terms.html">Terms</a>
-    <a href="privacy.html">Privacy</a>
+    <a href="download.html" class="nav-cta">Get the app</a>
   </nav>
 </div></header>
-<main id="main" tabindex="-1">
+<main id="main" tabindex="-1" class="wide">
   <section class="hero">
     <img class="app-icon" src="app-icon.png" alt="" width="112" height="112">
     <h1>Buy, sell, bid, and rent with verified neighbors.</h1>
-    <p class="lead">Geerho is a free local marketplace for iPhone. Everyone who sells, rents, or sends messages verifies their identity, so you know who you're dealing with. We're launching first in California.</p>
-    <p class="beta-note"><strong>Coming soon:</strong> a public beta on TestFlight, then the App Store.</p>
+    <p class="lead">Geerho is a free local marketplace. Browse everything here, then buy, bid, rent, and message in the iPhone app, where every member verifies their identity. We're launching first in California.</p>
+    <p class="actions">
+      <a class="button" href="download.html">Get the app</a>
+      <a class="button secondary" href="browse.html">Browse listings</a>
+    </p>
+  </section>
+
+  <section aria-labelledby="latest-heading">
+    <div class="section-head">
+      <h2 id="latest-heading">Latest on Geerho</h2>
+      <a href="browse.html">See all</a>
+    </div>
+    <p class="status-line" id="latest-status" role="status">Loading listings…</p>
+    <ul class="cards" id="latest"></ul>
   </section>
 
   <h2>What you can do</h2>
@@ -56,14 +71,21 @@
     </li>
   </ul>
 
-  <h2>Need help?</h2>
-  <p>Browse the <a href="faq.html">frequently asked questions</a>, or <a href="contact.html">contact Geerho Support</a>.</p>
+  <section class="cta-band">
+    <h2>Ready to buy, bid, or rent?</h2>
+    <p>Transactions happen in the Geerho app, so everyone you deal with is verified.</p>
+    <a class="button" href="download.html">Get the app</a>
+  </section>
 </main>
 <footer class="site-footer"><div class="inner">
   <span>© 2026 Geerho, LLC</span>
+  <a href="about.html">About</a>
+  <a href="news.html">News</a>
+  <a href="investors.html">Investors</a>
+  <a href="faq.html">FAQ</a>
+  <a href="contact.html">Contact</a>
   <a href="terms.html">Terms of Service</a>
   <a href="privacy.html">Privacy Policy</a>
-  <a href="contact.html">Contact</a>
 </div></footer>
 </body>
 </html>
