@@ -8,6 +8,8 @@
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="style.css">
+  <script type="module" src="support.js"></script>
+  <script type="module" src="auth.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -17,34 +19,65 @@
     <a href="browse.html">Browse</a>
     <a href="about.html">About</a>
     <a href="news.html">News</a>
-    <a href="investors.html">Investors</a>
+    <a href="partners.html">Partners</a>
     <a href="faq.html">FAQ</a>
+    <a href="account.html" data-account>Sign in</a>
     <a href="download.html" class="nav-cta">Get the app</a>
   </nav>
 </div></header>
 <main id="main" tabindex="-1">
   <h1>Contact us</h1>
-  <p class="lead">Geerho Support is in the app, so we can see the transaction you’re asking about and reply where
-  you’ll see it.</p>
-  <p class="actions"><a class="button" href="download.html">Get the app</a></p>
+  <p class="lead">Geerho Support answers here on the website and in the app. Signed-in members can pick the transaction
+  they're asking about, so we can find it right away.</p>
 
-  <h2>How to reach Geerho Support</h2>
-  <ol>
-    <li>Open the Geerho app and sign in.</li>
-    <li>Go to <strong>Profile → Settings → Contact Support</strong>. You can also tap the life-preserver button in
-      your <strong>Inbox</strong>, or <strong>Get Help with This Order</strong> on a purchase.</li>
-    <li>Choose the <strong>reason</strong>, and the <strong>transaction ID</strong> if it’s about a listing, purchase,
-      or sale.</li>
-    <li>Describe what happened. You can attach photos, screenshots, a voice message, a YouTube or other video link,
-      or a PDF.</li>
-  </ol>
-  <p>We reply in your Inbox under “Geerho Support,” usually within 1–2 business days. Many questions are answered in
-  the <a href="faq.html">FAQ</a>.</p>
+  <section id="support-signed-out" hidden>
+    <p class="actions"><a class="button" id="support-sign-in" href="account.html?next=contact.html">Sign in to contact support</a></p>
+    <p>Use the same account as the app. You can also contact us in the app under
+      <strong>Profile → Settings → Contact Support</strong>. Many questions are answered in the <a href="faq.html">FAQ</a>.</p>
+  </section>
+
+  <section id="support-signed-in" hidden>
+    <div id="ticket-view" hidden></div>
+    <div id="ticket-start">
+      <h2>New support request</h2>
+      <form id="ticket-form" novalidate>
+        <div>
+          <label for="reason">What's it about?</label>
+          <select id="reason" required></select>
+        </div>
+        <div>
+          <label for="subject">Transaction <span class="hint">Optional: a listing, purchase request, or sale</span></label>
+          <select id="subject"><option value="">None</option></select>
+        </div>
+        <div>
+          <label for="body">What happened?</label>
+          <textarea id="body" maxlength="5000" required aria-describedby="body-error"></textarea>
+          <span class="field-error" id="body-error" hidden></span>
+        </div>
+        <div>
+          <label for="files">Attachments <span class="hint">Optional: up to 10 photos, screenshots, or PDFs (15 MB each)</span></label>
+          <input type="file" id="files" multiple accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">
+        </div>
+        <div>
+          <label for="link">Video or web link <span class="hint">Optional</span></label>
+          <input type="url" id="link" placeholder="https://">
+        </div>
+        <button type="submit">Send to Geerho Support</button>
+        <p class="status bad" id="ticket-error" role="alert" hidden></p>
+      </form>
+      <p class="hint">We reply here and in the app's Inbox under “Geerho Support,” usually within 1–2 business days.</p>
+    </div>
+
+    <h2>Your support requests</h2>
+    <ul class="link-list" id="ticket-list"><li class="status-line">Loading…</li></ul>
+  </section>
+
   <p><strong>If you are in immediate danger, call 911 or your local emergency number.</strong></p>
 
   <h2>Privacy requests</h2>
-  <p>To access, correct, or delete your personal information, choose the reason “Privacy request” in Contact Support,
-  or write to us at the mailing address below. California residents receive a response within 45 days; users in the
+  <p>To access, correct, or delete your personal information, choose the reason “Privacy request” above or in the app's
+  Contact Support, or write to us at the mailing address below. You can also delete your account yourself from your
+  <a href="account.html">Account</a> page or the app. California residents receive a response within 45 days; users in the
   EEA, UK, and Switzerland within one month. See our <a href="privacy.html">Privacy Policy</a>.</p>
 
   <h2>Legal notices and copyright</h2>
@@ -59,7 +92,7 @@
   <span>© 2026 Geerho, LLC</span>
   <a href="about.html">About</a>
   <a href="news.html">News</a>
-  <a href="investors.html">Investors</a>
+  <a href="partners.html">Partners</a>
   <a href="faq.html">FAQ</a>
   <a href="contact.html" aria-current="page">Contact</a>
   <a href="terms.html">Terms of Service</a>

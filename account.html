@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your Geerho account</title>
+  <meta name="description" content="Sign in to Geerho, verify your identity, and manage your account.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="auth.js"></script>
+  <script type="module" src="account.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="index.html"><img src="favicon.png" alt="" width="28" height="28">Geerho</a>
+  <nav aria-label="Site">
+    <a href="browse.html">Browse</a>
+    <a href="about.html">About</a>
+    <a href="news.html">News</a>
+    <a href="partners.html">Partners</a>
+    <a href="faq.html">FAQ</a>
+    <a href="account.html" aria-current="page" data-account>Sign in</a>
+    <a href="download.html" class="nav-cta">Get the app</a>
+  </nav>
+</div></header>
+<main id="main" tabindex="-1">
+  <p class="status-line" id="status" role="status">Loading…</p>
+
+  <section id="signed-out" hidden>
+    <h1>Sign in to Geerho</h1>
+    <p class="lead">Use the same account as the Geerho app. Sign in to message sellers, contact support, and verify your identity.</p>
+    <div class="sign-in-buttons">
+      <button type="button" class="provider" data-provider="google">Continue with Google</button>
+      <button type="button" class="provider" data-provider="github">Continue with GitHub</button>
+    </div>
+    <p class="status bad" id="sign-in-error" role="alert" hidden></p>
+    <p class="hint">By continuing, you agree to our <a href="terms.html">Terms of Service</a> and acknowledge our <a href="privacy.html">Privacy Policy</a>. We keep you signed in on this browser until you sign out.</p>
+  </section>
+
+  <section id="choose-username" hidden>
+    <h1>Choose a username</h1>
+    <p class="lead">It's how other people find and recognize you on Geerho, on the web and in the app.</p>
+    <form id="username-form" novalidate>
+      <div>
+        <label for="username">Username <span class="hint">3–30 letters, numbers, or underscores</span></label>
+        <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="31" required aria-describedby="username-error">
+        <span class="field-error" id="username-error" hidden></span>
+      </div>
+      <button type="submit">Save username</button>
+    </form>
+  </section>
+
+  <section id="signed-in" hidden>
+    <h1 id="greeting">Your account</h1>
+    <p class="meta" id="signed-in-as"></p>
+    <p class="status good" id="notice" role="status" hidden></p>
+
+    <h2>Identity verification</h2>
+    <div class="panel" id="verification"></div>
+
+    <h2>Your activity</h2>
+    <ul class="link-list">
+      <li><a href="messages.html">Messages</a></li>
+      <li><a href="contact.html">Contact Geerho Support</a></li>
+      <li><a href="browse.html">Browse listings</a></li>
+    </ul>
+    <p class="hint">Selling, buying, bidding, and renting on the website are coming soon. For now, use the <a href="download.html">Geerho app</a> for those.</p>
+
+    <h2>Sign out</h2>
+    <p><button type="button" class="secondary" id="sign-out">Sign out of this browser</button></p>
+
+    <h2>Delete your account</h2>
+    <details class="danger">
+      <summary>Delete my Geerho account</summary>
+      <p>This permanently deletes your account, listings, messages, and photos, on the website and in the app. It can't be undone.</p>
+      <form id="delete-form" novalidate>
+        <div>
+          <label for="delete-confirm">Type DELETE to confirm</label>
+          <input type="text" id="delete-confirm" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <button type="submit" class="danger-button">Delete my account</button>
+        <p class="status bad" id="delete-error" role="alert" hidden></p>
+      </form>
+    </details>
+  </section>
+</main>
+<footer class="site-footer"><div class="inner">
+  <span>© 2026 Geerho, LLC</span>
+  <a href="about.html">About</a>
+  <a href="news.html">News</a>
+  <a href="partners.html">Partners</a>
+  <a href="faq.html">FAQ</a>
+  <a href="contact.html">Contact</a>
+  <a href="terms.html">Terms of Service</a>
+  <a href="privacy.html">Privacy Policy</a>
+</div></footer>
+</body>
+</html>

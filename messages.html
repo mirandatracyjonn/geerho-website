@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Listing · Geerho</title>
-  <meta name="description" content="A listing on Geerho, the local marketplace with verified members.">
+  <title>Messages · Geerho</title>
+  <meta name="robots" content="noindex">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="style.css">
-  <script type="module" src="listing.js"></script>
   <script type="module" src="auth.js"></script>
+  <script type="module" src="messages.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="site-header"><div class="inner">
   <a class="brand" href="index.html"><img src="favicon.png" alt="" width="28" height="28">Geerho</a>
   <nav aria-label="Site">
-    <a href="browse.html" aria-current="page">Browse</a>
+    <a href="browse.html">Browse</a>
     <a href="about.html">About</a>
     <a href="news.html">News</a>
     <a href="partners.html">Partners</a>
@@ -26,9 +26,16 @@
   </nav>
 </div></header>
 <main id="main" tabindex="-1" class="wide">
-  <p class="back"><a href="browse.html">← Browse</a></p>
+  <h1>Messages</h1>
   <p class="status-line" id="status" role="status">Loading…</p>
-  <article class="listing" id="listing" hidden></article>
+  <div class="inbox" id="inbox" hidden>
+    <nav class="conversations" aria-label="Conversations">
+      <ul id="conversation-list"></ul>
+    </nav>
+    <section class="thread" id="thread" aria-live="polite">
+      <p class="status-line" id="thread-empty">Choose a conversation.</p>
+    </section>
+  </div>
 </main>
 <footer class="site-footer"><div class="inner">
   <span>© 2026 Geerho, LLC</span>

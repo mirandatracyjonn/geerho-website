@@ -4,7 +4,7 @@
 
 export const SUPABASE_URL = "https://zdumomkbwgognuehsgtq.supabase.co";
 // Publishable key: safe to ship in a web page. Row-level security decides what it can read.
-const SUPABASE_KEY = "sb_publishable_SEag6fSR5xQemF6KmEEtZA_vr6ot6B3";
+export const SUPABASE_KEY = "sb_publishable_SEag6fSR5xQemF6KmEEtZA_vr6ot6B3";
 
 // Fill these in when the links exist; until then the Download page says "coming soon".
 export const TESTFLIGHT_URL = null; // e.g. "https://testflight.apple.com/join/XXXXXXXX"

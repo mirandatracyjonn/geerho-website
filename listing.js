@@ -66,10 +66,33 @@ function actions(listing) {
   const verb = listing.listing_format === "rental" ? "Rent"
     : listing.listing_format === "auction" ? "Bid"
     : "Buy";
+  const message = el("button", { type: "button", class: "secondary" }, "Message the seller");
+  const error = el("p", { class: "status bad", role: "alert", hidden: true });
+  message.addEventListener("click", async () => {
+    // Loaded only when needed, so browsing stays light.
+    const { currentUser, friendlyError, signInURL, supabase } = await import("./auth.js");
+    if (!(await currentUser())) {
+      location.assign(signInURL());
+      return;
+    }
+    message.disabled = true;
+    error.hidden = true;
+    const { data: conversationId, error: problem } = await supabase.rpc("start_conversation", { listing: listing.id });
+    if (!problem) {
+      location.assign(`messages.html?c=${conversationId}`);
+      return;
+    }
+    message.disabled = false;
+    error.replaceChildren(/verif/i.test(problem.message)
+      ? el("span", {}, "Verify your identity to message sellers. ", el("a", { href: "account.html" }, "Verify now"), ".")
+      : friendlyError(problem));
+    error.hidden = false;
+  });
   return el("div", { class: "in-app" },
     el("a", { class: "button", href: appLink(listing.reference) }, `${verb} in the app`),
-    el("a", { class: "button secondary", href: appLink(listing.reference) }, "Message the seller"),
-    el("p", { class: "hint" }, "Buying, bidding, renting, and messaging happen in the Geerho app, where every member verifies their identity."),
+    message,
+    error,
+    el("p", { class: "hint" }, `${verb === "Buy" ? "Buying" : verb === "Bid" ? "Bidding" : "Renting"} on the website is coming soon. Every member verifies their identity before transacting.`),
   );
 }
 
