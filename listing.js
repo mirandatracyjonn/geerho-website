@@ -55,6 +55,17 @@ function facts(listing, address) {
     add("Listing ID", listing.reference);
     return el("dl", { class: "facts" }, rows);
   }
+  if (listing.kind === "service" || listing.kind === "job") {
+    add(listing.kind === "job" ? "Budget" : "Price", priceLine(listing));
+    if (listing.profession) add("Kind of work", listing.profession.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase()));
+    if (listing.remote_ok) add("Remote", listing.kind === "job" ? "Can be done remotely" : "Works remotely");
+    if (listing.travel_radius_km) add("Travels", `Up to ${Math.round(listing.travel_radius_km / 1.609)} miles`);
+    if (listing.years_experience != null) add("Experience", `${listing.years_experience} years`);
+    if (listing.needed_by) add("Needed by", new Date(`${listing.needed_by}T12:00:00`).toLocaleDateString([], { dateStyle: "medium" }));
+    add("Location", [listing.city, listing.region].filter(Boolean).join(", "));
+    add("Listing ID", listing.reference);
+    return el("dl", { class: "facts" }, rows);
+  }
   if (listing.listing_format === "rental") {
     add("Daily rate", money(listing.price_cents, c));
     if (listing.weekly_rate_cents) add("Weekly rate", money(listing.weekly_rate_cents, c));
@@ -91,7 +102,8 @@ function facts(listing, address) {
 
 function actions(listing) {
   const isHome = listing.kind === "rental" || listing.kind === "property_sale";
-  const verb = isHome ? "Request a tour" : listing.listing_format === "rental" ? "Rent"
+  const verb = isHome ? "Request a tour" : listing.kind === "service" ? "Request a quote" : listing.kind === "job" ? "Respond"
+    : listing.listing_format === "rental" ? "Rent"
     : listing.listing_format === "auction" ? "Bid"
     : "Buy";
   const message = el("button", { type: "button", class: "secondary" }, "Message the seller");
@@ -120,7 +132,9 @@ function actions(listing) {
     el("a", { class: "button", href: appLink(listing.reference) }, `${verb} in the app`),
     message,
     error,
-    el("p", { class: "hint" }, isHome
+    el("p", { class: "hint" }, listing.kind === "service" || listing.kind === "job"
+      ? "Quote requests and job responses on the website are coming soon. Every member verifies their identity first."
+      : isHome
       ? "Tour requests on the website are coming soon. Never send money before you've seen the home and confirmed the lister is authorized."
       : `${verb === "Buy" ? "Buying" : verb === "Bid" ? "Bidding" : "Renting"} on the website is coming soon. Every member verifies their identity before transacting.`),
   );

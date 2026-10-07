@@ -42,7 +42,8 @@ const LISTING_COLUMNS = [
   "auction_state", "weekly_rate_cents", "deposit_cents", "max_rental_days", "late_fee_cents", "lending_radius_miles",
   "seller_id", "kind", "lister_role", "bedrooms", "bathrooms", "floor_area_sqm", "lot_area_sqm", "year_built",
   "parking_spaces", "furnished", "pets", "laundry", "security_deposit_cents", "lease_months", "available_from",
-  "utilities_included", "hoa_fee_cents", "country", "listing_photos(storage_path,position,width,height)",
+  "utilities_included", "hoa_fee_cents", "country", "profession", "rate_type", "travel_radius_km", "remote_ok",
+  "years_experience", "needed_by", "listing_photos(storage_path,position,width,height)",
 ].join(",");
 
 export async function getListing(id) {
@@ -122,6 +123,13 @@ export function el(tag, attributes = {}, ...children) {
 
 /** What the card's price line says, by listing format. */
 export function priceLine(listing) {
+  if (listing.kind === "service" || listing.kind === "job") {
+    const amount = money(listing.price_cents, listing.currency);
+    const job = listing.kind === "job";
+    if (!listing.rate_type || listing.rate_type === "quote") return job ? "Open to quotes" : "By quote";
+    if (listing.rate_type === "hourly") return job ? `Budget ${amount} / hour` : `${amount} / hour`;
+    return job ? `Budget ${amount}` : amount;
+  }
   if (listing.kind === "rental") return `${money(listing.price_cents, listing.currency)} / month`;
   if (listing.listing_format === "rental") return `${money(listing.price_cents, listing.currency)} / day`;
   if (listing.listing_format === "auction") {
@@ -133,6 +141,8 @@ export function priceLine(listing) {
 }
 
 export function formatBadge(listing) {
+  if (listing.kind === "service") return "Service";
+  if (listing.kind === "job") return "Job";
   if (listing.kind === "rental") return "Home for rent";
   if (listing.kind === "property_sale") return "Home for sale";
   if (listing.listing_format === "rental") return "For rent";
@@ -143,7 +153,9 @@ export function formatBadge(listing) {
 export function listingCard(listing) {
   const badge = formatBadge(listing);
   const place = [listing.city, listing.region].filter(Boolean).join(", ");
-  const extra = listing.kind && listing.kind !== "item"
+  const extra = listing.kind === "service" || listing.kind === "job"
+    ? (listing.remote_ok ? "Remote OK" : null)
+    : listing.kind && listing.kind !== "item"
     ? propertyFacts(listing) || null
     : listing.listing_format === "auction" && listing.auction_ends_at
     ? timeLeft(listing.auction_ends_at)
