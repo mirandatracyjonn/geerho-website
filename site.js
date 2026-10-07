@@ -40,12 +40,38 @@ const LISTING_COLUMNS = [
   "published_at", "expires_at", "offers_pickup", "offers_shipping", "shipping_carriers", "shipping_fee_cents",
   "reference", "listing_format", "auction_ends_at", "buy_now_cents", "current_bid_cents", "bid_count", "reserve_met",
   "auction_state", "weekly_rate_cents", "deposit_cents", "max_rental_days", "late_fee_cents", "lending_radius_miles",
-  "seller_id", "listing_photos(storage_path,position,width,height)",
+  "seller_id", "kind", "lister_role", "bedrooms", "bathrooms", "floor_area_sqm", "lot_area_sqm", "year_built",
+  "parking_spaces", "furnished", "pets", "laundry", "security_deposit_cents", "lease_months", "available_from",
+  "utilities_included", "hoa_fee_cents", "country", "listing_photos(storage_path,position,width,height)",
 ].join(",");
 
 export async function getListing(id) {
   const rows = await request(`listings?select=${LISTING_COLUMNS}&id=eq.${encodeURIComponent(id)}&status=eq.active`);
   return rows[0] ?? null;
+}
+
+/** A home's street address: public for homes for sale, hidden for rentals (the database decides). */
+export async function getAddress(listingId) {
+  const rows = await request(`property_addresses?select=street,unit&listing_id=eq.${encodeURIComponent(listingId)}`);
+  return rows[0] ?? null;
+}
+
+/** Square feet in the US, square meters elsewhere (stored in m²). */
+export function areaText(sqm, country) {
+  if (sqm == null) return null;
+  return (country ?? "US") === "US"
+    ? `${Math.round(sqm * 10.7639).toLocaleString()} sq ft`
+    : `${Number(sqm).toLocaleString(undefined, { maximumFractionDigits: 1 })} m²`;
+}
+
+/** "2 bd · 1.5 ba · 915 sq ft" */
+export function propertyFacts(listing) {
+  const parts = [];
+  if (listing.bedrooms != null) parts.push(listing.bedrooms === 0 ? "Studio" : `${listing.bedrooms} bd`);
+  if (listing.bathrooms != null) parts.push(`${Number(listing.bathrooms)} ba`);
+  const area = areaText(listing.floor_area_sqm, listing.country);
+  if (area) parts.push(area);
+  return parts.join(" · ");
 }
 
 export function getCategories() {
@@ -96,6 +122,7 @@ export function el(tag, attributes = {}, ...children) {
 
 /** What the card's price line says, by listing format. */
 export function priceLine(listing) {
+  if (listing.kind === "rental") return `${money(listing.price_cents, listing.currency)} / month`;
   if (listing.listing_format === "rental") return `${money(listing.price_cents, listing.currency)} / day`;
   if (listing.listing_format === "auction") {
     const bids = listing.bid_count ?? 0;
@@ -106,6 +133,8 @@ export function priceLine(listing) {
 }
 
 export function formatBadge(listing) {
+  if (listing.kind === "rental") return "Home for rent";
+  if (listing.kind === "property_sale") return "Home for sale";
   if (listing.listing_format === "rental") return "For rent";
   if (listing.listing_format === "auction") return "Auction";
   return null;
@@ -114,7 +143,9 @@ export function formatBadge(listing) {
 export function listingCard(listing) {
   const badge = formatBadge(listing);
   const place = [listing.city, listing.region].filter(Boolean).join(", ");
-  const extra = listing.listing_format === "auction" && listing.auction_ends_at
+  const extra = listing.kind && listing.kind !== "item"
+    ? propertyFacts(listing) || null
+    : listing.listing_format === "auction" && listing.auction_ends_at
     ? timeLeft(listing.auction_ends_at)
     : listing.offers_shipping
       ? (listing.shipping_fee_cents === 0 ? "Free shipping" : "Ships")

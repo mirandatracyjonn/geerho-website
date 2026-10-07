@@ -1,4 +1,9 @@
-import { CONDITIONS, appLink, el, formatBadge, getListing, getRatingSummary, money, photoURL, priceLine, timeLeft } from "./site.js";
+import { CONDITIONS, appLink, areaText, el, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
+  propertyFacts, timeLeft } from "./site.js";
+
+const PETS = { none: "No pets", cats: "Cats OK", dogs: "Dogs OK", cats_and_dogs: "Cats and dogs OK" };
+const LAUNDRY = { in_unit: "In unit", on_site: "On site", none: "None" };
+const ROLES = { owner: "Owner", agent: "Real estate agent or broker", property_manager: "Property manager" };
 
 const status = document.getElementById("status");
 const article = document.getElementById("listing");
@@ -24,10 +29,32 @@ function gallery(photos) {
   return el("div", { class: "gallery" }, el("div", { class: "gallery-main" }, main), thumbs);
 }
 
-function facts(listing) {
+function facts(listing, address) {
   const rows = [];
   const add = (label, value) => value && rows.push(el("div", {}, el("dt", {}, label), el("dd", {}, value)));
   const c = listing.currency;
+  if (listing.kind === "rental" || listing.kind === "property_sale") {
+    add("Home", propertyFacts(listing));
+    if (address) add("Address", [address.street, address.unit, listing.city, listing.region].filter(Boolean).join(", "));
+    else add("Area", [listing.city, listing.region].filter(Boolean).join(", "));
+    if (listing.kind === "rental") {
+      if (listing.security_deposit_cents) add("Security deposit", money(listing.security_deposit_cents, c));
+      if (listing.lease_months) add("Lease", listing.lease_months === 1 ? "Month to month" : `${listing.lease_months} months`);
+      if (listing.available_from) add("Available", new Date(`${listing.available_from}T12:00:00`).toLocaleDateString([], { dateStyle: "medium" }));
+      if (listing.furnished != null) add("Furnished", listing.furnished ? "Yes" : "No");
+      if (listing.pets) add("Pets", PETS[listing.pets]);
+      if (listing.utilities_included) add("Utilities included", listing.utilities_included);
+    } else {
+      if (listing.hoa_fee_cents) add("HOA fee", `${money(listing.hoa_fee_cents, c)} / month`);
+      add("Lot", areaText(listing.lot_area_sqm, listing.country));
+    }
+    if (listing.year_built) add("Built", String(listing.year_built));
+    if (listing.parking_spaces != null) add("Parking", listing.parking_spaces === 0 ? "None" : `${listing.parking_spaces} spaces`);
+    if (listing.laundry) add("Laundry", LAUNDRY[listing.laundry]);
+    if (listing.lister_role) add("Listed by", ROLES[listing.lister_role]);
+    add("Listing ID", listing.reference);
+    return el("dl", { class: "facts" }, rows);
+  }
   if (listing.listing_format === "rental") {
     add("Daily rate", money(listing.price_cents, c));
     if (listing.weekly_rate_cents) add("Weekly rate", money(listing.weekly_rate_cents, c));
@@ -63,7 +90,8 @@ function facts(listing) {
 }
 
 function actions(listing) {
-  const verb = listing.listing_format === "rental" ? "Rent"
+  const isHome = listing.kind === "rental" || listing.kind === "property_sale";
+  const verb = isHome ? "Request a tour" : listing.listing_format === "rental" ? "Rent"
     : listing.listing_format === "auction" ? "Bid"
     : "Buy";
   const message = el("button", { type: "button", class: "secondary" }, "Message the seller");
@@ -92,7 +120,9 @@ function actions(listing) {
     el("a", { class: "button", href: appLink(listing.reference) }, `${verb} in the app`),
     message,
     error,
-    el("p", { class: "hint" }, `${verb === "Buy" ? "Buying" : verb === "Bid" ? "Bidding" : "Renting"} on the website is coming soon. Every member verifies their identity before transacting.`),
+    el("p", { class: "hint" }, isHome
+      ? "Tour requests on the website are coming soon. Never send money before you've seen the home and confirmed the lister is authorized."
+      : `${verb === "Buy" ? "Buying" : verb === "Bid" ? "Bidding" : "Renting"} on the website is coming soon. Every member verifies their identity before transacting.`),
   );
 }
 
@@ -115,8 +145,10 @@ async function render() {
   }
 
   document.title = `${listing.title} · Geerho`;
+  const isHome = listing.kind === "rental" || listing.kind === "property_sale";
+  const address = isHome ? await getAddress(listing.id).catch(() => null) : null;
   const badge = formatBadge(listing);
-  const seller = el("p", { class: "seller" }, "Sold by a verified Geerho member.");
+  const seller = el("p", { class: "seller" }, isHome ? "Listed by a verified Geerho member." : "Sold by a verified Geerho member.");
   article.append(
     gallery(listing.listing_photos ?? []),
     el("div", { class: "listing-body" },
@@ -124,7 +156,7 @@ async function render() {
       el("h1", {}, listing.title),
       el("p", { class: "listing-price" }, priceLine(listing)),
       actions(listing),
-      facts(listing),
+      facts(listing, address),
       el("h2", {}, "Description"),
       el("p", { class: "description" }, listing.description),
       seller,

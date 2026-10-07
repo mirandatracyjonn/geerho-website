@@ -32,7 +32,8 @@ async function load(reset) {
   if (reset) {
     query = {
       search_text: form.elements.q.value.trim() || null,
-      format: form.elements.format.value || null,
+      format: ["home_rent", "home_sale"].includes(form.elements.format.value) ? null : (form.elements.format.value || null),
+      kind: { home_rent: "rental", home_sale: "property_sale" }[form.elements.format.value] ?? null,
       category: form.elements.category.value ? Number(form.elements.category.value) : null,
       sort: form.elements.sort.value,
       page_size: PAGE_SIZE,
