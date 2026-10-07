@@ -2,8 +2,11 @@
 // Everything a member can do here goes through the same checks as the app (row-level security and the
 // database functions), so a web user can never do more than an app user.
 
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm";
 import { SUPABASE_KEY, SUPABASE_URL, el } from "./site.js";
+
+// vendor/supabase-js-2.117.2.js (copied from npm and checked against its published checksum) sets window.supabase.
+// It's served from geerho.com, so no third-party server can change the code that handles sign-in.
+const { createClient } = window.supabase;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
@@ -67,5 +70,8 @@ async function updateHeader() {
     link.before(messages);
   }
 }
+
+// Signed-in pages must never be shown inside another site's frame (clickjacking).
+if (window.top !== window.self) window.top.location.replace(window.self.location.href);
 
 updateHeader();

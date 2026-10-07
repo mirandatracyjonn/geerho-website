@@ -26,14 +26,33 @@ FOOTER = [
 ]
 # Pages that belong under a menu item (listing.html is part of Browse).
 SECTION = {"listing.html": "browse.html"}
-# Every page loads auth.js so the header shows "Account" and "Messages" for signed-in members.
+SUPABASE = "https://zdumomkbwgognuehsgtq.supabase.co"
+# Content Security Policy: code and styles only from geerho.com; data only from our Supabase project.
+CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self'; "
+    f"img-src 'self' data: blob: {SUPABASE}; connect-src 'self' {SUPABASE} wss://zdumomkbwgognuehsgtq.supabase.co; "
+    "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+)
+CSP_TAG = f'  <meta http-equiv="Content-Security-Policy" content="{CSP}">\n'
+REFERRER_TAG = '  <meta name="referrer" content="strict-origin-when-cross-origin">\n'
+# Every page loads auth.js so the header shows "Account" and "Messages" for signed-in members. The Supabase
+# library is a plain script that must run before it.
+LIBRARY_TAG = '  <script src="vendor/supabase-js-2.117.2.js"></script>\n'
 AUTH_SCRIPT = '  <script type="module" src="auth.js"></script>\n'
 
 
-def ensure_auth_script(text):
-    if 'src="auth.js"' in text or 'class="site-header"' not in text:
+def ensure_head(text):
+    if 'class="site-header"' not in text:
         return text
-    return text.replace("</head>", AUTH_SCRIPT + "</head>", 1)
+    text = re.sub(r'  <meta http-equiv="Content-Security-Policy"[^>]*>\n', "", text)
+    text = re.sub(r'  <meta name="referrer"[^>]*>\n', "", text)
+    text = text.replace('<meta charset="utf-8">\n', '<meta charset="utf-8">\n' + CSP_TAG + REFERRER_TAG, 1)
+    if 'src="vendor/supabase-js' not in text:
+        if 'src="auth.js"' in text:
+            text = text.replace(AUTH_SCRIPT, LIBRARY_TAG + AUTH_SCRIPT, 1)
+        else:
+            text = text.replace("</head>", LIBRARY_TAG + AUTH_SCRIPT + "</head>", 1)
+    return text
 
 
 def link(href, label, current, extra=""):
@@ -72,6 +91,6 @@ for path in sorted(ROOT.glob("*.html")):
     text = path.read_text()
     text = re.sub(r'<header class="site-header">.*?</header>', lambda _: header(path.name), text, flags=re.S)
     text = re.sub(r'<footer class="site-footer">.*?</footer>', lambda _: footer(path.name), text, flags=re.S)
-    text = ensure_auth_script(text)
+    text = ensure_head(text)
     path.write_text(text)
     print("updated", path.name)

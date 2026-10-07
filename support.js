@@ -141,7 +141,10 @@ async function renderTicketList() {
 
 async function attachmentLink(attachment) {
   if (attachment.kind === "link" && attachment.url) {
-    return el("a", { href: attachment.url, rel: "noopener noreferrer", target: "_blank" }, attachment.url);
+    const safe = /^https?:\/\//i.test(attachment.url);
+    return safe
+      ? el("a", { href: attachment.url, rel: "noopener noreferrer", target: "_blank" }, attachment.url)
+      : el("span", {}, attachment.url);
   }
   if (!attachment.path) return null;
   const { data } = await supabase.storage.from(BUCKET).createSignedUrl(attachment.path, 3600);
