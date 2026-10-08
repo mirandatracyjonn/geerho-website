@@ -1,5 +1,8 @@
 import { currentUser, friendlyError, myProfile, safeNext, signInWith, supabase, verificationState } from "./auth.js";
-import { el } from "./site.js";
+import { APPLE_WEB_SIGN_IN, el } from "./site.js";
+
+// Shown only once Sign in with Apple for the web is configured in Supabase.
+if (APPLE_WEB_SIGN_IN) document.querySelector('button[data-provider="apple"]').hidden = false;
 
 const params = new URLSearchParams(location.search);
 const next = safeNext(params.get("next"));

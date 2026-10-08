@@ -207,13 +207,22 @@ main.wide, .site-header .inner, .site-footer .inner { max-width: 1080px; }
 .status-line[hidden] { display: none; }
 
 /* Listing cards */
-.cards { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 18px 14px; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); }
+.cards { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 18px 12px; grid-template-columns: repeat(auto-fill, minmax(min(170px, calc(50% - 6px)), 1fr)); }
 .card a { display: flex; flex-direction: column; gap: 2px; color: var(--text); text-decoration: none; }
 .card a:hover .card-title { text-decoration: underline; }
-.card-photo { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: var(--surface); margin-bottom: 6px; }
-.card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Photos are cropped to a 4:3 box (object-fit: cover) so every card is the same height, whatever the photo's shape. */
+.card-photo { position: relative; aspect-ratio: 4 / 3; min-height: 0; border-radius: 12px; overflow: hidden; background: var(--surface); margin-bottom: 6px; }
+.card-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.card-photo .no-photo { position: absolute; inset: 0; }
+@supports not (aspect-ratio: 1) {
+  .card-photo { height: 0; padding-top: 75%; }
+}
+@media (max-width: 480px) {
+  .card-title { font-size: 0.95rem; }
+  .card-meta { font-size: 0.8rem; }
+}
 .no-photo { display: grid; place-items: center; width: 100%; height: 100%; color: var(--muted); font-size: 0.9rem; }
-.badge { position: absolute; top: 8px; left: 8px; background: var(--accent); color: var(--accent-text); font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+.badge { position: absolute; z-index: 1; top: 8px; left: 8px; background: var(--accent); color: var(--accent-text); font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
 .badge.inline { position: static; display: inline-block; margin-bottom: 8px; }
 .card-title { font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .card-price { font-weight: 700; }
@@ -268,6 +277,8 @@ main:not(.wide) > * { max-width: 760px; }
 /* Account */
 .sign-in-buttons { display: grid; gap: 10px; max-width: 360px; margin: 24px 0; }
 .sign-in-buttons .provider { justify-self: stretch; background: var(--surface); color: var(--text); border: 1px solid var(--field-border); }
+.sign-in-buttons .provider.apple { background: #000; color: #fff; border-color: #000; }
+@media (prefers-color-scheme: dark) { .sign-in-buttons .provider.apple { background: #fff; color: #000; border-color: #fff; } }
 .panel { background: var(--surface); border-radius: 14px; padding: 4px 18px 16px; }
 .panel button { margin-top: 4px; }
 .link-list { list-style: none; padding: 0; margin: 8px 0; }
@@ -316,3 +327,11 @@ input[type="url"] { background: var(--field); border: 1px solid var(--field-bord
   .thread-head { flex-direction: column; }
 }
 .in-app button { width: 100%; justify-self: stretch; }
+
+/* Line icons beside headings (inline SVG; inherit the text color). */
+.icon { width: 1.15em; height: 1.15em; flex: none; }
+.features h3 { display: flex; align-items: center; gap: 10px; }
+.features h3 .icon { color: var(--accent); width: 1.35em; height: 1.35em; padding: 6px; box-sizing: content-box;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 10px; }
+h2.with-icon { display: flex; align-items: center; gap: 10px; }
+h2.with-icon .icon { color: var(--accent); }
