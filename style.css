@@ -76,7 +76,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visibl
 .site-header { border-bottom: 1px solid var(--rule); }
 .site-header .inner, .site-footer .inner, main { max-width: 760px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
 .site-header .inner { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding-top: 14px; padding-bottom: 14px; }
-.brand { font-weight: 700; font-size: 1.15rem; color: var(--text); text-decoration: none; margin-right: auto; }
+.brand { font-weight: 800; font-size: 1.3rem; color: var(--text); text-decoration: none; margin-right: auto; }
 .site-header nav { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.95rem; }
 .site-header nav a { color: var(--muted); text-decoration: none; display: inline-block; padding: 10px 0; }
 .site-header nav a[aria-current="page"] { color: var(--text); font-weight: 600; }
@@ -174,7 +174,8 @@ main:focus { outline: none; }
 
 /* Header extras */
 .brand { display: inline-flex; align-items: center; gap: 8px; }
-.brand img { border-radius: 7px; }
+.brand img { width: 44px; height: 44px; }
+@media (max-width: 600px) { .brand img { width: 38px; height: 38px; } }
 .site-header nav { align-items: center; }
 .site-header nav a.nav-cta { color: var(--accent-text); background: var(--accent); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
 .site-header nav a.nav-cta:hover { text-decoration: none; filter: brightness(1.08); }

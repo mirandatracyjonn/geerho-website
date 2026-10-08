@@ -67,7 +67,7 @@ def header(page):
     get_app = link("download.html", "Get the app", current, ' class="nav-cta"')
     return (
         '<header class="site-header"><div class="inner">\n'
-        '  <a class="brand" href="index.html"><img src="favicon.png" alt="" width="28" height="28">Geerho</a>\n'
+        '  <a class="brand" href="index.html"><img src="logo-mark.png" alt="" width="44" height="44">Geerho</a>\n'
         '  <nav aria-label="Site">\n'
         f"    {items}\n"
         f"    {account}\n"
