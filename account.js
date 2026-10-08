@@ -79,11 +79,12 @@ function setupUsername(user) {
 // --- Verification -------------------------------------------------------------------------------------------
 
 const VERIFICATION_TEXT = {
-  unverified: "Verify your identity to message, buy, sell, bid, and rent on Geerho. You'll need a government ID and a camera for a quick selfie. Our partner Didit checks it; Geerho only receives the result.",
+  unverified: "Verify your identity to message, buy, sell, bid, and rent on Geerho. You'll need a government ID and a camera for a quick selfie. Our partner Didit checks it; Geerho never sees your ID images and keeps only your legal name, date of birth, the address on your ID (private to you), and a scrambled code that makes sure each person has one account.",
   in_progress: "Your verification has started but isn't finished. If you closed the window, you can start again.",
   in_review: "Thanks! Your verification is being reviewed. This usually takes a few minutes.",
   verified: "You're verified. You have the blue Verified badge on Geerho.",
   declined: "Your verification wasn't approved. You can try again if you have attempts left, or contact support.",
+  duplicate: "Your ID is already verified on another Geerho account. Each person can have one account, so sign in with that one. We sent you a message in Geerho Support saying which account and how to sign in.",
   expired: "Your verification session expired. You can start a new one.",
 };
 
@@ -91,6 +92,11 @@ async function renderVerification(profile) {
   const panel = document.getElementById("verification");
   const state = profile.verified_at ? { status: "verified", attempts: 0 } : await verificationState();
   const left = Math.max(0, 3 - (state.attempts ?? 0));
+  if (state.decline_reason === "duplicate_account") {
+    panel.replaceChildren(el("p", {}, VERIFICATION_TEXT.duplicate),
+      el("p", {}, el("a", { href: "contact.html?reason=verification" }, "Open Geerho Support")));
+    return;
+  }
   panel.replaceChildren(el("p", {}, VERIFICATION_TEXT[state.status] ?? VERIFICATION_TEXT.unverified));
   if (state.status === "verified") return;
 
@@ -112,7 +118,9 @@ async function renderVerification(profile) {
       }
       button.disabled = false;
       const code = problem?.context?.status;
-      error.textContent = code === 409 ? "You're already verified."
+      const reason = await problem?.context?.json?.().then((body) => body?.error).catch(() => null);
+      error.textContent = reason === "duplicate_account" ? VERIFICATION_TEXT.duplicate
+        : code === 409 ? "You're already verified."
         : code === 429 ? "You've used all your verification attempts. Contact support and we'll help."
         : "We couldn't start verification. Please try again in a moment.";
       error.hidden = false;
@@ -128,6 +136,72 @@ async function renderVerification(profile) {
   } catch {
     // Optional.
   }
+}
+
+// --- Sign-in methods ---------------------------------------------------------------------------------------
+
+const PROVIDER_NAMES = { apple: "Apple", google: "Google", github: "GitHub" };
+
+/** Supabase's linking errors, in plain words. */
+function linkProblem(message) {
+  if (/already|exists/i.test(message)) {
+    return "That account already has its own Geerho account. Sign in with it, delete that account, then link it here. Or contact Support and we'll help.";
+  }
+  if (/manual linking/i.test(message)) return "Linking sign-in methods isn't turned on yet. Please try again later.";
+  return `We couldn't link it: ${message}`;
+}
+
+async function renderSignInMethods() {
+  const list = document.getElementById("linked-methods");
+  const buttons = document.getElementById("link-buttons");
+  const error = document.getElementById("link-error");
+  const fail = (message) => { error.textContent = message; error.hidden = false; };
+  // Coming back from a provider that refused to link.
+  const returned = new URLSearchParams(location.hash.slice(1)).get("error_description") ?? params.get("error_description");
+  if (returned) fail(linkProblem(returned));
+
+  const { data, error: problem } = await supabase.auth.getUserIdentities();
+  if (problem) return fail(friendlyError(problem));
+  const identities = (data?.identities ?? []).filter((identity) => PROVIDER_NAMES[identity.provider]);
+  list.replaceChildren(...identities.map((identity) => {
+    const item = el("li", {}, el("strong", {}, PROVIDER_NAMES[identity.provider]),
+      identity.identity_data?.email ? ` · ${identity.identity_data.email}` : "");
+    if (identities.length > 1) {
+      const remove = el("button", { type: "button", class: "secondary" }, "Remove");
+      remove.addEventListener("click", async () => {
+        if (!confirmRemoval(remove)) return;
+        const { error: unlinkError } = await supabase.auth.unlinkIdentity(identity);
+        if (unlinkError) return fail(friendlyError(unlinkError));
+        renderSignInMethods();
+      });
+      item.append(" ", remove);
+    }
+    return item;
+  }));
+
+  const missing = Object.keys(PROVIDER_NAMES)
+    .filter((provider) => !identities.some((identity) => identity.provider === provider))
+    .filter((provider) => provider !== "apple" || APPLE_WEB_SIGN_IN);
+  buttons.replaceChildren(...missing.map((provider) => {
+    const button = el("button", { type: "button", class: "secondary" }, `Link ${PROVIDER_NAMES[provider]}`);
+    button.addEventListener("click", async () => {
+      error.hidden = true;
+      const { error: linkError } = await supabase.auth.linkIdentity({
+        provider,
+        options: { redirectTo: new URL("account.html", location.href).href, scopes: provider === "github" ? "read:user user:email" : undefined },
+      });
+      if (linkError) fail(linkProblem(linkError.message));
+    });
+    return button;
+  }));
+}
+
+/** Two clicks to remove: the first asks, the second does it (no browser dialogs). */
+function confirmRemoval(button) {
+  if (button.dataset.confirm) return true;
+  button.dataset.confirm = "1";
+  button.textContent = "Tap again to remove";
+  return false;
 }
 
 // --- Account actions ----------------------------------------------------------------------------------------
@@ -208,6 +282,7 @@ async function render() {
   }
   show("signedIn");
   await renderVerification(profile);
+  await renderSignInMethods();
 }
 
 // Sign-in redirects land here with a one-time code; the library swaps it for a session first.

@@ -29,7 +29,7 @@
 </div></header>
 <main id="main" tabindex="-1">
   <h1>Privacy Policy</h1>
-  <p class="meta">Last updated: October 6, 2026</p>
+  <p class="meta">Last updated: October 7, 2026</p>
 
   <p>Geerho, LLC (“Geerho,” “we,” “us,” or “our”) operates the Geerho mobile app and the website at which this policy
   is posted (together, the “Services”): a marketplace for buying and selling new and used items, listing property for
@@ -76,8 +76,17 @@
     <li><strong>Identity verification.</strong> To sell or send messages, you verify your identity with our
       verification provider, Didit. Didit collects images of your government ID, a selfie or short video, and the
       details on your ID (such as your name, date of birth, and document number), and compares your face with your ID
-      photo. Geerho receives only the result (for example, verified or not verified) and the date. We do not receive or
-      store your ID images or face data.</li>
+      photo. Geerho receives the result (for example, verified or not verified) and the date, and keeps only these details
+      from your ID: your legal name, date of birth, the issuing country, the address printed on it (if any), and a keyed,
+      one-way hash of your ID number. We use the hash, and a hash of your name and date of birth, only to make sure each
+      person has one Geerho account; they can't be turned back into your ID number. We do not receive or store your ID
+      images or face data.</li>
+    <li><strong>Sign-in methods.</strong> If you link more than one sign-in method (Apple, Google, or GitHub) to your
+      account, we keep the identifier and email address each one gives us, so any of them signs you in to the same account.</li>
+    <li><strong>Home address and proof of address.</strong> Your home address is private to you: it is never shown on
+      your profile, and we use it to fill in checkout. It comes from your ID, or from a change you send with 2 or 3
+      proofs of address (such as a utility bill, bank statement, or lease). Only Geerho moderators see the proofs, to
+      compare the name and address, and we delete them once the change is approved or declined.</li>
     <li><strong>Homes and tours.</strong> If you list a home, its street address. For homes for sale it is shown publicly;
       for rentals it is shown only to you, Geerho moderators, and people whose tour you confirm. If you request or answer
       a tour, the times suggested, your note, your time zone, and the result.</li>
@@ -175,6 +184,9 @@
     <tr><td>Support requests, messages, and attachments</td><td>Until you delete your account</td></tr>
     <tr><td>Last active time</td><td>Until you delete your account (only the most recent time is kept)</td></tr>
     <tr><td>Verification result (verified or not, and the date) held by Geerho</td><td>Until you delete your account</td></tr>
+    <tr><td>Legal name, date of birth, and the one-way ID hashes held by Geerho</td><td>Until you delete your account</td></tr>
+    <tr><td>Home address</td><td>Until you change it or delete your account</td></tr>
+    <tr><td>Proofs of address</td><td>Deleted when a moderator approves or declines the change (or when you cancel it)</td></tr>
     <tr><td>Professional license details and license photo</td><td>Until you delete the license or your account</td></tr>
     <tr><td>Home addresses and tour requests</td><td>Until the listing is deleted or you delete your account</td></tr>
     <tr><td>Job responses and quotes</td><td>Until the job is deleted or you delete your account</td></tr>
@@ -204,14 +216,14 @@
   section 4.</p>
   <div class="table-wrap"><table>
     <tr><th scope="col">CCPA category</th><th scope="col">Examples</th><th scope="col">Disclosed for a business purpose to</th></tr>
-    <tr><td>Identifiers</td><td>Name, email, username, account IDs; phone number and date of birth you give with a professional license</td><td>Service providers</td></tr>
+    <tr><td>Identifiers</td><td>Name, email, username, account IDs; legal name and date of birth from your ID; your home address; phone number and date of birth you give with a professional license</td><td>Service providers; moderators (home address and proofs, when you change your address)</td></tr>
     <tr><td>Customer records (Cal. Civ. Code § 1798.80)</td><td>Name, email</td><td>Service providers</td></tr>
     <tr><td>Commercial information</td><td>Listings you post, items you favorite</td><td>Other users; service providers</td></tr>
     <tr><td>Internet or network activity</td><td>App usage and diagnostics</td><td>Service providers</td></tr>
     <tr><td>Geolocation data</td><td>Approximate location; precise device location while using the app, if you allow it</td><td>Service providers; other users see only approximate listing locations</td></tr>
     <tr><td>Audio, electronic, visual information</td><td>Photos in listings and profiles; ID images and selfie for verification (collected by Didit)</td><td>Other users (listing and profile photos only); service providers</td></tr>
     <tr><td>Biometric information</td><td>Face geometry used by Didit to match your selfie to your ID</td><td>Didit, as our service provider</td></tr>
-    <tr><td>Government identifiers</td><td>ID document details read by Didit during verification</td><td>Didit, as our service provider</td></tr>
+    <tr><td>Government identifiers</td><td>ID document details read by Didit during verification; a one-way hash of your ID number kept by Geerho</td><td>Didit, as our service provider</td></tr>
     <tr><td>Professional or employment-related information</td><td>Professional licenses: profession, license number, issuer, name as licensed, expiry date</td><td>Other users (name as licensed, profession, license number, and issuer); service providers</td></tr>
     <tr><td>Inferences</td><td>None</td><td>Not applicable</td></tr>
   </table></div>

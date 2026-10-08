@@ -27,7 +27,7 @@ export async function myProfile(userId) {
 
 /** "unverified" | "in_progress" | "in_review" | "verified" | "declined" | "expired", plus attempts used. */
 export async function verificationState() {
-  const { data } = await supabase.from("identity_verifications").select("status, attempts").limit(1);
+  const { data } = await supabase.from("identity_verifications").select("status, attempts, decline_reason").limit(1);
   return data?.[0] ?? { status: "unverified", attempts: 0 };
 }
 
