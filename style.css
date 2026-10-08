@@ -310,6 +310,9 @@ input[type="url"] { background: var(--field); border: 1px solid var(--field-bord
 .bubble.mine { align-self: flex-end; background: var(--accent); color: var(--accent-text); }
 .bubble.mine .card-meta, .bubble.mine a { color: var(--accent-text); opacity: 0.85; }
 .bubble p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.system-card { align-self: center; width: min(100%, 460px); background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 14px; padding: 10px 14px; font-size: 0.9rem; }
+.system-card p { margin: 4px 0 0; white-space: pre-line; overflow-wrap: anywhere; }
 .support-thread { max-height: none; }
 .attachments { margin: 6px 0 0; padding-left: 18px; }
 .composer { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; margin-top: 8px; }

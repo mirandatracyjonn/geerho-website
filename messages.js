@@ -1,7 +1,7 @@
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { el, money, photoURL } from "./site.js";
 
-const MESSAGE_COLUMNS = "id, conversation_id, sender_id, body, created_at, read_at";
+const MESSAGE_COLUMNS = "id, conversation_id, sender_id, body, created_at, read_at, is_system";
 const REFRESH_MS = 8000;
 const REPORT_REASONS = {
   scam_or_fraud: "Scam or fraud",
@@ -51,6 +51,13 @@ async function loadConversations() {
 
 function messageBubble(message) {
   const mine = message.sender_id === me.id;
+  // Sent by Geerho (tour confirmed, rental request, ...): a centered event card, not a person's bubble.
+  if (message.is_system) {
+    return el("li", { class: "system-card", "data-id": message.id },
+      el("span", { class: "card-meta" }, `Geerho · sent on ${mine ? "your" : "their"} behalf · ${when(message.created_at)}`),
+      el("p", {}, message.body),
+    );
+  }
   return el("li", { class: mine ? "bubble mine" : "bubble", "data-id": message.id },
     el("p", {}, message.body),
     el("span", { class: "card-meta" }, when(message.created_at)),
