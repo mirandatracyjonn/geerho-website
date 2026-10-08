@@ -339,3 +339,13 @@ input[type="url"] { background: var(--field); border: 1px solid var(--field-bord
   background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 10px; }
 h2.with-icon { display: flex; align-items: center; gap: 10px; }
 h2.with-icon .icon { color: var(--accent); }
+
+/* Header: the app's brand gradient (Theme.brandTop → brandBottom), white text, same in light and dark mode. */
+.site-header { background: linear-gradient(135deg, #7389ff, #4557ed); border-bottom: none; }
+.site-header .brand { color: #ffffff; }
+.site-header .brand img { filter: drop-shadow(0 2px 3px rgba(8, 13, 56, 0.55)); }
+.site-header nav a { color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(10, 16, 70, 0.45); opacity: 0.9; }
+.site-header nav a:hover { opacity: 1; }
+.site-header nav a[aria-current="page"] { color: #ffffff; opacity: 1; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.site-header nav a.nav-cta { color: #3446d9; background: #ffffff; text-shadow: none; opacity: 1; }
+.site-header a:focus-visible { outline-color: #ffffff; }
