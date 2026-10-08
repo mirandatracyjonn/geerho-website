@@ -84,6 +84,7 @@ const VERIFICATION_TEXT = {
   in_review: "Thanks! Your verification is being reviewed. This usually takes a few minutes.",
   verified: "You're verified. You have the blue Verified badge on Geerho.",
   declined: "Your verification wasn't approved. You can try again if you have attempts left, or contact support.",
+  under18: "Geerho is for adults 18 and older. Your ID shows you're under 18, so we couldn't verify your account. You can keep browsing, but buying, selling, and messaging are for adults only. If your birth date was read incorrectly, contact Geerho Support.",
   duplicate: "Your ID is already verified on another Geerho account. Each person can have one account, so sign in with that one. We sent you a message in Geerho Support saying which account and how to sign in.",
   expired: "Your verification session expired. You can start a new one.",
 };
@@ -92,8 +93,8 @@ async function renderVerification(profile) {
   const panel = document.getElementById("verification");
   const state = profile.verified_at ? { status: "verified", attempts: 0 } : await verificationState();
   const left = Math.max(0, 3 - (state.attempts ?? 0));
-  if (state.decline_reason === "duplicate_account") {
-    panel.replaceChildren(el("p", {}, VERIFICATION_TEXT.duplicate),
+  if (state.decline_reason === "duplicate_account" || state.decline_reason === "under_18") {
+    panel.replaceChildren(el("p", {}, state.decline_reason === "under_18" ? VERIFICATION_TEXT.under18 : VERIFICATION_TEXT.duplicate),
       el("p", {}, el("a", { href: "contact.html?reason=verification" }, "Open Geerho Support")));
     return;
   }
@@ -120,6 +121,7 @@ async function renderVerification(profile) {
       const code = problem?.context?.status;
       const reason = await problem?.context?.json?.().then((body) => body?.error).catch(() => null);
       error.textContent = reason === "duplicate_account" ? VERIFICATION_TEXT.duplicate
+        : reason === "under_18" ? VERIFICATION_TEXT.under18
         : code === 409 ? "You're already verified."
         : code === 429 ? "You've used all your verification attempts. Contact support and we'll help."
         : "We couldn't start verification. Please try again in a moment.";
