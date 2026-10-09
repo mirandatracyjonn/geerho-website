@@ -1,0 +1,29 @@
+# Rebuilds the link-preview pages (/l/<listing id>/) for every live listing.
+name: Share pages
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: share-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build share pages
+        run: python3 scripts/build-share-pages.py
+      - name: Publish changes
+        run: |
+          git config user.name "Geerho bot"
+          git config user.email "support@geerho.com"
+          git add -A l
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Update listing preview pages"
+          git push

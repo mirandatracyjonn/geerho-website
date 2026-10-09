@@ -49,7 +49,24 @@ def ensure_head(text):
             text = text.replace(AUTH_SCRIPT, LIBRARY_TAG + AUTH_SCRIPT, 1)
         else:
             text = text.replace("</head>", LIBRARY_TAG + AUTH_SCRIPT + "</head>", 1)
-    return text
+    return add_preview_tags(text)
+
+
+def add_preview_tags(text):
+    """Link previews (iMessage, Facebook, ...) for regular pages: the page's title and description with the Geerho icon."""
+    text = re.sub(r'  <meta (property="og:[^"]+"|name="twitter:[^"]+") content="[^"]*">\n', "", text)
+    title = re.search(r"<title>(.*?)</title>", text, re.S)
+    description = re.search(r'<meta name="description" content="([^"]*)">', text)
+    if not title:
+        return text
+    tags = (
+        '  <meta property="og:site_name" content="Geerho">\n'
+        f'  <meta property="og:title" content="{title.group(1).strip()}">\n'
+        + (f'  <meta property="og:description" content="{description.group(1)}">\n' if description else "")
+        + '  <meta property="og:image" content="https://geerho.com/app-icon-large.png">\n'
+        '  <meta name="twitter:card" content="summary">\n'
+    )
+    return text.replace("</head>", tags + "</head>", 1)
 
 
 def link(href, label, current, extra=""):
