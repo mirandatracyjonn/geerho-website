@@ -92,3 +92,38 @@ if (menu) {
     if (event.target.closest("nav a")) menu.open = false;
   });
 }
+
+// Back to top: appears after scrolling down; glides up smoothly (about 0.7 s, eased), or jumps for reduced motion.
+const toTop = document.createElement("button");
+toTop.type = "button";
+toTop.className = "to-top";
+toTop.setAttribute("aria-label", "Back to top");
+const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+for (const [key, value] of Object.entries({ viewBox: "0 0 24 24", width: "22", height: "22", "aria-hidden": "true", focusable: "false" })) arrow.setAttribute(key, value);
+const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+for (const [key, value] of Object.entries({ d: "M12 19V5M5 12l7-7 7 7", fill: "none", stroke: "currentColor", "stroke-width": "2.5", "stroke-linecap": "round", "stroke-linejoin": "round" })) arrowPath.setAttribute(key, value);
+arrow.append(arrowPath);
+toTop.append(arrow);
+document.body.append(toTop);
+const showToTop = () => toTop.classList.toggle("shown", window.scrollY > 600);
+window.addEventListener("scroll", showToTop, { passive: true });
+showToTop();
+toTop.addEventListener("click", () => {
+  const start = window.scrollY;
+  if (start === 0) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    window.scrollTo(0, 0);
+  } else {
+    const duration = Math.min(900, Math.max(500, start / 6)); // longer pages take a little longer, within 0.5–0.9 s
+    const began = performance.now();
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2); // ease in-out
+    const step = (now) => {
+      const t = Math.min(1, (now - began) / duration);
+      window.scrollTo(0, Math.round(start * (1 - ease(t))));
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  // Keyboard users continue from the top of the page.
+  document.querySelector(".site-header .brand")?.focus({ preventScroll: true });
+});

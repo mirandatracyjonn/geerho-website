@@ -419,3 +419,15 @@ h2.with-icon .icon { color: var(--accent); }
 .site-header .menu nav a.nav-cta:hover { background: linear-gradient(135deg, #e11d2a, #c8102e); filter: brightness(1.08); }
 .site-header .menu nav a.nav-cta[aria-current="page"] { color: #ffffff; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #d71920; }
 .site-header .brand { margin-right: auto; }
+
+/* Back to top */
+.to-top {
+  position: fixed; right: 20px; bottom: 20px; z-index: 40; width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center; border: 0; padding: 0; cursor: pointer; color: #ffffff;
+  background: linear-gradient(135deg, #7389ff, #4557ed); box-shadow: 0 6px 18px rgba(30, 40, 140, 0.35);
+  opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.to-top.shown { opacity: 1; transform: none; pointer-events: auto; }
+.to-top:hover { filter: brightness(1.08); }
+.to-top:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
