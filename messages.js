@@ -11,6 +11,7 @@ const REPORT_REASONS = {
   spam: "Spam",
   prohibited_item: "Prohibited item",
   counterfeit: "Counterfeit or stolen",
+  hidden_fees: "Hidden fees or price not shown",
   other: "Something else",
 };
 

@@ -40,10 +40,11 @@ body {
   color: var(--text);
   font: 17px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
 }
-/* Links: brand blue, no underline. The blue has at least 4.5:1 contrast with every background
-   and 3:1 with body text (WCAG 1.4.1, 1.4.3); hover and keyboard focus add an underline. */
+/* Links: brand blue, never underlined. The blue has at least 4.5:1 contrast with every background
+   and 3:1 with body text (WCAG 1.4.1, 1.4.3); hover darkens it and keyboard focus shows the outline. */
 a { color: var(--link); text-decoration: none; }
-a:hover, a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+a:hover { text-decoration: none; filter: brightness(0.82); }
+a:focus-visible { text-decoration: none; }
 
 /* Skip link: hidden until a keyboard user tabs to it (WCAG 2.4.1). */
 .skip-link {
@@ -210,7 +211,7 @@ main.wide, .site-header .inner, .site-footer .inner { max-width: 1080px; }
 /* Listing cards */
 .cards { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 18px 12px; grid-template-columns: repeat(auto-fill, minmax(min(170px, calc(50% - 6px)), 1fr)); }
 .card a { display: flex; flex-direction: column; gap: 2px; color: var(--text); text-decoration: none; }
-.card a:hover .card-title { text-decoration: underline; }
+.card a:hover .card-title { color: var(--link); }
 /* Photos are cropped to a 4:3 box (object-fit: cover) so every card is the same height, whatever the photo's shape. */
 .card-photo { position: relative; aspect-ratio: 4 / 3; min-height: 0; border-radius: 12px; overflow: hidden; background: var(--surface); margin-bottom: 6px; }
 .card-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -346,7 +347,8 @@ h2.with-icon .icon { color: var(--accent); }
 .site-header .brand img { filter: drop-shadow(0 2px 3px rgba(8, 13, 56, 0.55)); }
 .site-header nav a { color: #ffffff; font-weight: 600; text-shadow: 0 1px 2px rgba(10, 16, 70, 0.45); opacity: 0.9; }
 .site-header nav a:hover { opacity: 1; }
-.site-header nav a[aria-current="page"] { color: #ffffff; opacity: 1; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.site-header nav a[aria-current="page"] { color: #ffffff; opacity: 1; background: rgba(255, 255, 255, 0.2); border-radius: 999px; padding-left: 12px; padding-right: 12px; }
+.site-header nav a:hover { filter: none; }
 .site-header nav a.nav-cta { color: #3446d9; background: #ffffff; text-shadow: none; opacity: 1; }
 .site-header a:focus-visible { outline-color: #ffffff; }
 
@@ -356,3 +358,5 @@ h2.with-icon .icon { color: var(--accent); }
 .rich li { margin: 0.15em 0; }
 .rich li::marker { color: var(--accent); font-weight: 700; }
 .rich strong { font-weight: 700; }
+/* Whole-card links don't dim on hover; their title turns blue instead. */
+.card a:hover, .conversations a:hover, .brand:hover { filter: none; }
