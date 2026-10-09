@@ -360,3 +360,53 @@ h2.with-icon .icon { color: var(--accent); }
 .rich strong { font-weight: 700; }
 /* Whole-card links don't dim on hover; their title turns blue instead. */
 .card a:hover, .conversations a:hover, .brand:hover { filter: none; }
+
+/* Header: logo, Get the app, and a hamburger menu on every screen size. */
+.site-header .inner { flex-wrap: nowrap; gap: 12px; }
+.site-header .nav-cta {
+  color: #ffffff; background: #d71920; border-radius: 999px; padding: 8px 18px; font-weight: 700;
+  text-decoration: none; white-space: nowrap; box-shadow: 0 2px 8px rgba(120, 8, 14, 0.35); text-shadow: none;
+}
+.site-header .nav-cta:hover { filter: brightness(1.1); color: #ffffff; }
+.site-header .nav-cta[aria-current="page"] { box-shadow: 0 0 0 2px #ffffff; }
+.menu { position: relative; }
+.menu summary {
+  list-style: none; cursor: pointer; width: 44px; height: 44px; border-radius: 12px;
+  display: grid; place-items: center; background: rgba(255, 255, 255, 0.16);
+}
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary:hover { background: rgba(255, 255, 255, 0.26); }
+.menu summary:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+.menu .bars, .menu .bars::before, .menu .bars::after {
+  display: block; width: 20px; height: 2px; border-radius: 2px; background: #ffffff; position: relative;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.menu .bars::before, .menu .bars::after { content: ""; position: absolute; left: 0; }
+.menu .bars::before { top: -6px; }
+.menu .bars::after { top: 6px; }
+.menu[open] .bars { background: transparent; }
+.menu[open] .bars::before { transform: translateY(6px) rotate(45deg); }
+.menu[open] .bars::after { transform: translateY(-6px) rotate(-45deg); }
+.site-header .menu nav {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 50; min-width: 220px;
+  display: flex; flex-direction: column; gap: 2px; padding: 8px;
+  background: var(--bg); border: 1px solid var(--rule); border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(10, 16, 70, 0.22);
+}
+.site-header .menu nav a {
+  color: var(--text); font-weight: 600; text-shadow: none; opacity: 1; padding: 11px 14px; border-radius: 10px;
+}
+.site-header .menu nav a:hover { background: var(--surface); filter: none; }
+.site-header .menu nav a[aria-current="page"] { background: rgba(79, 99, 246, 0.12); color: var(--link); padding-left: 14px; padding-right: 14px; }
+@media (prefers-reduced-motion: reduce) { .menu .bars, .menu .bars::before, .menu .bars::after { transition: none; } }
+
+/* Footer: legal links centered, copyright centered below. */
+.site-footer .inner { flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.site-footer nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 22px; }
+.site-footer .copyright { margin: 4px 0 0; color: var(--muted); }
+/* The menu button isn't an FAQ question: no marker, no divider. */
+.menu summary::before, .menu summary::after { content: none; display: none; }
+.menu summary { border: 0; margin: 0; padding: 0; }
+.site-header .menu nav { align-items: stretch; text-align: left; }
+.site-header details.menu { border: 0; padding: 0; }
+.menu summary { display: grid; min-height: 0; font-size: inherit; }

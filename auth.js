@@ -75,3 +75,20 @@ async function updateHeader() {
 if (window.top !== window.self) window.top.location.replace(window.self.location.href);
 
 updateHeader();
+
+// Header menu: close it when tapping outside, pressing Escape, or choosing a page.
+const menu = document.querySelector(".site-header details.menu");
+if (menu) {
+  document.addEventListener("click", (event) => {
+    if (menu.open && !menu.contains(event.target)) menu.open = false;
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && menu.open) {
+      menu.open = false;
+      menu.querySelector("summary").focus();
+    }
+  });
+  menu.addEventListener("click", (event) => {
+    if (event.target.closest("nav a")) menu.open = false;
+  });
+}
