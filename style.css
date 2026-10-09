@@ -349,3 +349,10 @@ h2.with-icon .icon { color: var(--accent); }
 .site-header nav a[aria-current="page"] { color: #ffffff; opacity: 1; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 6px; }
 .site-header nav a.nav-cta { color: #3446d9; background: #ffffff; text-shadow: none; opacity: 1; }
 .site-header a:focus-visible { outline-color: #ffffff; }
+
+/* Formatted post descriptions */
+.rich p { margin: 0 0 0.5em; }
+.rich ul, .rich ol { margin: 0 0 0.6em; padding-left: 1.4em; }
+.rich li { margin: 0.15em 0; }
+.rich li::marker { color: var(--accent); font-weight: 700; }
+.rich strong { font-weight: 700; }

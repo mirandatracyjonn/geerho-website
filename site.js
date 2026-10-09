@@ -183,3 +183,41 @@ export function listingCard(listing) {
 export function appLink(reason) {
   return reason ? `download.html?for=${encodeURIComponent(reason)}` : "download.html";
 }
+
+// --- Formatted descriptions -------------------------------------------------------------------------------
+// Same rules as the app (RichText.swift): **bold**, *italic*, "- " bullets, "1. " numbered lines, emoji.
+// Built from DOM nodes only (never innerHTML), and links stay plain text.
+
+function inlineNodes(line) {
+  const nodes = [];
+  const pattern = /\*\*([^*]+?)\*\*|\*([^*\s][^*]*?)\*/g;
+  let last = 0;
+  for (const match of line.matchAll(pattern)) {
+    if (match.index > last) nodes.push(line.slice(last, match.index));
+    nodes.push(match[1] !== undefined ? el("strong", {}, match[1]) : el("em", {}, match[2]));
+    last = match.index + match[0].length;
+  }
+  if (last < line.length) nodes.push(line.slice(last));
+  return nodes;
+}
+
+export function richText(text) {
+  const root = el("div", { class: "rich" });
+  let list = null;
+  let listKind = null;
+  for (const raw of String(text ?? "").replace(/\r\n/g, "\n").split("\n")) {
+    const line = raw.trim();
+    const bullet = line.match(/^[-*•] (.*)$/);
+    const numbered = line.match(/^(\d{1,3})\. (.*)$/);
+    const kind = bullet ? "ul" : numbered ? "ol" : null;
+    if (kind !== listKind) {
+      list = kind ? el(kind, kind === "ol" ? { start: numbered[1] } : {}) : null;
+      if (list) root.append(list);
+      listKind = kind;
+    }
+    if (bullet) list.append(el("li", {}, inlineNodes(bullet[1])));
+    else if (numbered) list.append(el("li", {}, inlineNodes(numbered[2])));
+    else if (line) root.append(el("p", {}, inlineNodes(line)));
+  }
+  return root;
+}

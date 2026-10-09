@@ -1,5 +1,5 @@
 import { CONDITIONS, appLink, areaText, el, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
-  propertyFacts, timeLeft } from "./site.js";
+  propertyFacts, timeLeft, richText } from "./site.js";
 
 const PETS = { none: "No pets", cats: "Cats OK", dogs: "Dogs OK", cats_and_dogs: "Cats and dogs OK" };
 const LAUNDRY = { in_unit: "In unit", on_site: "On site", none: "None" };
@@ -172,7 +172,7 @@ async function render() {
       actions(listing),
       facts(listing, address),
       el("h2", {}, "Description"),
-      el("p", { class: "description" }, listing.description),
+      richText(listing.description),
       seller,
     ),
   );
