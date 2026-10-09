@@ -410,3 +410,12 @@ h2.with-icon .icon { color: var(--accent); }
 .site-header .menu nav { align-items: stretch; text-align: left; }
 .site-header details.menu { border: 0; padding: 0; }
 .menu summary { display: grid; min-height: 0; font-size: inherit; }
+
+/* Get the app: the last menu item, a full-width red button that stands out. */
+.site-header .menu nav a.nav-cta {
+  margin-top: 6px; text-align: center; color: #ffffff; padding: 12px 14px; border-radius: 12px;
+  background: linear-gradient(135deg, #e11d2a, #c8102e); box-shadow: 0 4px 12px rgba(160, 10, 20, 0.3);
+}
+.site-header .menu nav a.nav-cta:hover { background: linear-gradient(135deg, #e11d2a, #c8102e); filter: brightness(1.08); }
+.site-header .menu nav a.nav-cta[aria-current="page"] { color: #ffffff; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #d71920; }
+.site-header .brand { margin-right: auto; }
