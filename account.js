@@ -76,6 +76,34 @@ function setupUsername(user) {
   });
 }
 
+// --- "I already have a Geerho account" ---------------------------------------------------------------------
+// A brand-new account (no username yet) can remove itself so the person signs in to the account they already have.
+
+function setupExistingAccount(user) {
+  const button = document.getElementById("existing-account");
+  const error = document.getElementById("existing-error");
+  if ((user.email ?? "").endsWith("privaterelay.appleid.com")) document.getElementById("hidden-email-note").hidden = false;
+  button.addEventListener("click", async () => {
+    error.hidden = true;
+    // Two taps (no browser dialogs): the first asks, the second does it.
+    if (!button.dataset.confirm) {
+      button.dataset.confirm = "1";
+      button.textContent = "Tap again to remove this new account";
+      return;
+    }
+    button.disabled = true;
+    const { error: problem } = await supabase.rpc("delete_account");
+    if (problem) {
+      button.disabled = false;
+      error.textContent = `We couldn't remove this account: ${friendlyError(problem)}`;
+      error.hidden = false;
+      return;
+    }
+    await supabase.auth.signOut({ scope: "local" });
+    location.replace("account.html?existing=1");
+  });
+}
+
 // --- Verification -------------------------------------------------------------------------------------------
 
 const VERIFICATION_TEXT = {
@@ -258,7 +286,15 @@ let wired = false;
 
 async function render() {
   const user = await currentUser();
-  if (!user) return show("signedOut");
+  if (!user) {
+    if (params.get("existing") === "1") {
+      const error = document.getElementById("sign-in-error");
+      error.textContent = "Done. Now sign in the way you did before, then add your other sign-in under Account → Sign-in methods.";
+      error.className = "status good";
+      error.hidden = false;
+    }
+    return show("signedOut");
+  }
 
   let profile;
   try {
@@ -269,6 +305,7 @@ async function render() {
   }
   if (!wired) {
     setupUsername(user);
+    setupExistingAccount(user);
     setupDelete(user);
     wired = true;
   }

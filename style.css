@@ -431,3 +431,5 @@ h2.with-icon .icon { color: var(--accent); }
 .to-top:hover { filter: brightness(1.08); }
 .to-top:focus-visible { outline: 3px solid var(--link); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
+.existing-account { margin-top: 28px; }
+.existing-account h2 { margin-top: 0; }

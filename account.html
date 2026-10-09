@@ -43,6 +43,7 @@
       <button type="button" class="provider" data-provider="github">Continue with GitHub</button>
     </div>
     <p class="status bad" id="sign-in-error" role="alert" hidden></p>
+    <p class="hint"><strong>Already have a Geerho account?</strong> Sign in the same way you did before. Each person can have one account. Using Apple for the first time? Choose <strong>“Share My Email”</strong> so we can match it to your account; with “Hide My Email,” sign in your usual way first and add Apple under Account → Sign-in methods.</p>
     <p class="hint">By continuing, you agree to our <a href="terms.html">Terms of Service</a> and acknowledge our <a href="privacy.html">Privacy Policy</a>. We keep you signed in on this browser until you sign out.</p>
   </section>
 
@@ -57,6 +58,14 @@
       </div>
       <button type="submit">Save username</button>
     </form>
+
+    <div class="panel existing-account">
+      <h2>Used Geerho before?</h2>
+      <p>Each person can have one Geerho account. If you already signed up another way (for example with Google), don't make a second one: remove this new, empty account, sign in the way you did before, then add this sign-in under <strong>Account → Sign-in methods</strong>.</p>
+      <p class="hint" id="hidden-email-note" hidden>You chose Apple's “Hide My Email,” so we couldn't match this Apple ID to your other account automatically.</p>
+      <button type="button" class="secondary" id="existing-account">I already have a Geerho account</button>
+      <p class="status bad" id="existing-error" role="alert" hidden></p>
+    </div>
   </section>
 
   <section id="signed-in" hidden>
