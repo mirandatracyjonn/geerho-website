@@ -7,7 +7,7 @@ export const SUPABASE_URL = "https://zdumomkbwgognuehsgtq.supabase.co";
 export const SUPABASE_KEY = "sb_publishable_SEag6fSR5xQemF6KmEEtZA_vr6ot6B3";
 
 // Fill these in when the links exist; until then the Download page says "coming soon".
-export const TESTFLIGHT_URL = null; // e.g. "https://testflight.apple.com/join/XXXXXXXX"
+export const TESTFLIGHT_URL = "https://testflight.apple.com/join/VskGx1Jk";
 export const APP_STORE_URL = null;  // e.g. "https://apps.apple.com/app/id0000000000"
 // Turn on once Sign in with Apple for the web is set up (Apple Services ID + secret in Supabase → Auth → Apple).
 export const APPLE_WEB_SIGN_IN = true;
