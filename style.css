@@ -569,3 +569,37 @@ body { overflow-x: clip; }
 }
 main.home { padding-top: 0; }
 .hero-search { margin: 0; }
+
+/* ===== iPhone notch / home indicator and the Home Screen web app ===== */
+html { -webkit-tap-highlight-color: transparent; }
+.site-header { padding-top: env(safe-area-inset-top); }
+.site-header .inner, .site-footer .inner, main, .hero-band, .trust-band {
+  padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));
+}
+.site-footer .inner { padding-bottom: calc(40px + env(safe-area-inset-bottom)); }
+
+/* Bottom tabs, like the app. Only when opened from the Home Screen (no Safari toolbar there). */
+.tab-bar { display: none; }
+@media (display-mode: standalone) {
+  html { background: var(--bg); overscroll-behavior-y: none; }
+  .site-header { position: sticky; top: 0; z-index: 30; box-shadow: 0 2px 12px rgba(30, 40, 140, 0.25); }
+  .site-header .inner { padding-top: 8px; padding-bottom: 8px; }
+  .site-header .brand img { width: 36px; height: 36px; }
+  .tab-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 35;
+    padding: 6px max(8px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+    border-top: 1px solid var(--rule);
+  }
+  .tab-bar a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 0; color: var(--muted); font-size: 0.7rem; font-weight: 600; }
+  .tab-bar a:hover { filter: none; }
+  .tab-bar svg { width: 26px; height: 26px; }
+  .tab-bar a[aria-current="page"] { color: var(--link); }
+  .tab-bar a[aria-current="page"] svg { stroke-width: 2.4; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .site-footer .inner { padding-bottom: 24px; }
+  .to-top { bottom: calc(80px + env(safe-area-inset-bottom)); }
+  /* The menu already has these as tabs. */
+  .site-header .menu nav a[href="browse.html"], .site-header .menu nav a[data-account], .site-header .menu nav a[href="messages.html"] { display: none; }
+}

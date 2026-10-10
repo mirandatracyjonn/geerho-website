@@ -37,6 +37,16 @@ REFERRER_TAG = '  <meta name="referrer" content="strict-origin-when-cross-origin
 FORMAT_TAG = '  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">\n'
 # Every page loads auth.js so the header shows "Account" and "Messages" for signed-in members. The Supabase
 # library is a plain script that must run before it.
+# Home Screen web app: full screen with the brand color behind the status bar, like the iPhone app.
+VIEWPORT_TAG = '  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+WEBAPP_TAGS = (
+    '  <link rel="manifest" href="manifest.webmanifest">\n'
+    '  <meta name="theme-color" content="#5a6ff4">\n'
+    '  <meta name="mobile-web-app-capable" content="yes">\n'
+    '  <meta name="apple-mobile-web-app-capable" content="yes">\n'
+    '  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n'
+    '  <meta name="apple-mobile-web-app-title" content="Geerho">\n'
+)
 LIBRARY_TAG = '  <script src="vendor/supabase-js-2.117.2.js"></script>\n'
 AUTH_SCRIPT = '  <script type="module" src="auth.js"></script>\n'
 
@@ -48,6 +58,9 @@ def ensure_head(text):
     text = re.sub(r'  <meta name="referrer"[^>]*>\n', "", text)
     text = re.sub(r'  <meta name="format-detection"[^>]*>\n', "", text)
     text = text.replace('<meta charset="utf-8">\n', '<meta charset="utf-8">\n' + CSP_TAG + REFERRER_TAG + FORMAT_TAG, 1)
+    text = re.sub(r'  <meta name="viewport"[^>]*>\n', lambda _: VIEWPORT_TAG, text, count=1)
+    text = re.sub(r'  (<link rel="manifest"|<meta name="theme-color"|<meta name="(apple-)?mobile-web-app-[^"]+")[^>]*>\n', "", text)
+    text = text.replace('  <link rel="apple-touch-icon"', WEBAPP_TAGS + '  <link rel="apple-touch-icon"', 1)
     if 'src="vendor/supabase-js' not in text:
         if 'src="auth.js"' in text:
             text = text.replace(AUTH_SCRIPT, LIBRARY_TAG + AUTH_SCRIPT, 1)
@@ -101,6 +114,29 @@ def header(page):
     )
 
 
+TABS = [
+    ("index.html", "Home", '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>'),
+    ("browse.html", "Browse", '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
+    ("messages.html", "Messages", '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+    ("account.html", "Account", '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+]
+
+
+ARIA_CURRENT = ' aria-current="page"'
+
+
+def tab_bar(page):
+    """App-style tabs at the bottom; CSS shows them only when Geerho is opened from the Home Screen."""
+    current = SECTION.get(page, page)
+    tabs = "\n  ".join(
+        f'<a href="{href}"{ARIA_CURRENT if href == current else ""}>'
+        f'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
+        f'stroke-linejoin="round" aria-hidden="true" focusable="false">{icon}</svg><span>{label}</span></a>'
+        for href, label, icon in TABS
+    )
+    return f'<nav class="tab-bar" aria-label="App">\n  {tabs}\n</nav>'
+
+
 def footer(page):
     items = "\n    ".join(link(href, label, page) for href, label in FOOTER)
     return (
@@ -116,7 +152,8 @@ def footer(page):
 for path in sorted(ROOT.glob("*.html")):
     text = path.read_text()
     text = re.sub(r'<header class="site-header">.*?</header>', lambda _: header(path.name), text, flags=re.S)
-    text = re.sub(r'<footer class="site-footer">.*?</footer>', lambda _: footer(path.name), text, flags=re.S)
+    text = re.sub(r'\n<nav class="tab-bar".*?</nav>', "", text, flags=re.S)
+    text = re.sub(r'<footer class="site-footer">.*?</footer>', lambda _: footer(path.name) + "\n" + tab_bar(path.name), text, flags=re.S)
     text = ensure_head(text)
     path.write_text(text)
     print("updated", path.name)
