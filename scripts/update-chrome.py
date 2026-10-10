@@ -80,8 +80,12 @@ def add_preview_tags(text):
         '  <meta property="og:site_name" content="Geerho">\n'
         f'  <meta property="og:title" content="{title.group(1).strip()}">\n'
         + (f'  <meta property="og:description" content="{description.group(1)}">\n' if description else "")
-        + '  <meta property="og:image" content="https://geerho.com/app-icon-large.png">\n'
-        '  <meta name="twitter:card" content="summary">\n'
+        # The public beta artwork (1200×630; source: Design/OG/og-beta.html in the app repo).
+        + '  <meta property="og:image" content="https://geerho.com/og-beta.png">\n'
+        '  <meta property="og:image:width" content="1200">\n'
+        '  <meta property="og:image:height" content="630">\n'
+        '  <meta property="og:image:alt" content="Geerho public beta now open: buy and sell, jobs, real estate, and rentals. Join on TestFlight at geerho.com.">\n'
+        '  <meta name="twitter:card" content="summary_large_image">\n'
     )
     return text.replace("</head>", tags + "</head>", 1)
 
