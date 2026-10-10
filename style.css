@@ -433,3 +433,8 @@ h2.with-icon .icon { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .to-top { transition: none; } }
 .existing-account { margin-top: 28px; }
 .existing-account h2 { margin-top: 0; }
+
+/* If a phone still auto-links something in a member's text, show it as plain text, not as a link. */
+a[x-apple-data-detectors], a[href^="x-apple-data-detectors:"] {
+  color: inherit !important; text-decoration: none !important; font: inherit !important; pointer-events: none;
+}

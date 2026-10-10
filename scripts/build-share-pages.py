@@ -84,6 +84,7 @@ def page(listing):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
   <title>{e(title)}</title>
   <meta name="description" content="{e(description)}">
   <link rel="canonical" href="{SITE}{target}">

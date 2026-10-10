@@ -32,6 +32,9 @@ CSP = (
 )
 CSP_TAG = f'  <meta http-equiv="Content-Security-Policy" content="{CSP}">\n'
 REFERRER_TAG = '  <meta name="referrer" content="strict-origin-when-cross-origin">\n'
+# iPhone Safari turns things that look like addresses, phone numbers, or dates into links (e.g. "Street Bob 114"
+# in a motorcycle's title became a map link). Listings are member text, so turn that off.
+FORMAT_TAG = '  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">\n'
 # Every page loads auth.js so the header shows "Account" and "Messages" for signed-in members. The Supabase
 # library is a plain script that must run before it.
 LIBRARY_TAG = '  <script src="vendor/supabase-js-2.117.2.js"></script>\n'
@@ -43,7 +46,8 @@ def ensure_head(text):
         return text
     text = re.sub(r'  <meta http-equiv="Content-Security-Policy"[^>]*>\n', "", text)
     text = re.sub(r'  <meta name="referrer"[^>]*>\n', "", text)
-    text = text.replace('<meta charset="utf-8">\n', '<meta charset="utf-8">\n' + CSP_TAG + REFERRER_TAG, 1)
+    text = re.sub(r'  <meta name="format-detection"[^>]*>\n', "", text)
+    text = text.replace('<meta charset="utf-8">\n', '<meta charset="utf-8">\n' + CSP_TAG + REFERRER_TAG + FORMAT_TAG, 1)
     if 'src="vendor/supabase-js' not in text:
         if 'src="auth.js"' in text:
             text = text.replace(AUTH_SCRIPT, LIBRARY_TAG + AUTH_SCRIPT, 1)
