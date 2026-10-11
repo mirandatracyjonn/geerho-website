@@ -20,6 +20,7 @@ FOOTER = [
     ("privacy.html", "Privacy"),
     ("faq.html", "FAQs"),
     ("partners.html", "Partners"),
+    ("plans.html", "Plans"),
 ]
 # Pages that belong under a menu item (listing.html is part of Browse).
 SECTION = {"listing.html": "browse.html"}

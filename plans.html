@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Plans · Geerho</title>
+  <meta name="description" content="Geerho plans for sellers, pros, and real estate: Basic, Pro, and Elite. More posts and no commission.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#5a6ff4">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Geerho">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="plans.js"></script>
+  <script src="vendor/supabase-js-2.117.2.js"></script>
+  <script type="module" src="auth.js"></script>
+  <meta property="og:site_name" content="Geerho">
+  <meta property="og:title" content="Plans · Geerho">
+  <meta property="og:description" content="Geerho plans for sellers, pros, and real estate: Basic, Pro, and Elite. More posts and no commission.">
+  <meta property="og:image" content="https://geerho.com/og-beta.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Geerho public beta now open: buy and sell, jobs, real estate, and rentals. Join on TestFlight at geerho.com.">
+  <meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="index.html"><img src="logo-mark.png" alt="" width="44" height="44">Geerho</a>
+  <details class="menu">
+    <summary aria-label="Menu"><span class="bars" aria-hidden="true"></span></summary>
+    <nav aria-label="Site">
+      <a href="browse.html">Browse</a>
+    <a href="about.html">About</a>
+    <a href="news.html">News</a>
+      <a href="account.html" data-account>Sign in</a>
+      <a href="contact.html">Contact</a>
+      <a href="download.html" class="nav-cta">Get the app</a>
+    </nav>
+  </details>
+</div></header>
+<main id="main" tabindex="-1" class="wide plans-page">
+  <section class="plans-hero">
+    <p class="eyebrow">Plans for sellers, pros, and real estate</p>
+    <h1>Post more. Pay no commission.</h1>
+    <p class="lead">Selling on Geerho is open to everyone: without a plan you can make 1 new post a day, and Geerho keeps 5% of each item you sell. A plan gives you more posts and removes Geerho's commission.</p>
+    <p class="status-line" id="plan-status" role="status"></p>
+  </section>
+
+  <ul class="plan-cards" id="plans">
+    <li class="plan-card">
+      <h2>Free</h2>
+      <p class="plan-price"><span>$0</span></p>
+      <ul class="plan-perks"><li>1 new post a day (30 a month)</li><li>5% commission on items you sell</li><li>1 home listing (homeowners)</li></ul>
+    </li>
+    <li class="plan-card" data-plan="basic">
+      <h2>Basic</h2>
+      <p class="plan-price"><span>$9.99</span>/month</p>
+      <p class="plan-peso">₱599/month in the Philippines</p>
+      <ul class="plan-perks"><li>3 new posts a day (90 a month)</li><li><strong>No commission</strong></li><li>List homes as a pro</li></ul>
+      <button class="button" type="button" data-subscribe="basic">Choose Basic</button>
+    </li>
+    <li class="plan-card featured" data-plan="pro">
+      <p class="plan-tag">Most popular</p>
+      <h2>Pro</h2>
+      <p class="plan-price"><span>$19.99</span>/month</p>
+      <p class="plan-peso">₱1,199/month in the Philippines</p>
+      <ul class="plan-perks"><li>5 new posts a day (150 a month)</li><li><strong>No commission</strong></li><li>List homes as a pro</li></ul>
+      <button class="button" type="button" data-subscribe="pro">Choose Pro</button>
+    </li>
+    <li class="plan-card" data-plan="elite">
+      <h2>Elite</h2>
+      <p class="plan-price"><span>$499.99</span>/month</p>
+      <p class="plan-peso">₱29,999/month in the Philippines</p>
+      <ul class="plan-perks"><li><strong>Unlimited</strong> new posts</li><li><strong>No commission</strong></li><li>For brokerages, dealers, and high-volume sellers</li></ul>
+      <button class="button" type="button" data-subscribe="elite">Choose Elite</button>
+    </li>
+  </ul>
+
+  <p class="actions" id="manage-row" hidden><button class="button secondary" type="button" id="manage">Manage My Plan</button></p>
+
+  <h2>Good to know</h2>
+  <ul>
+    <li><strong>Payment processing:</strong> when buyers pay in the app, the payment company's actual fee comes out of the seller's payout (cards 2.9% + 30¢; bank payments 0.8%, at most $5). It applies on every plan, and you see it before you list.</li>
+    <li><strong>Founding Sellers</strong> (the first 300 members to verify) pay no commission without a plan.</li>
+    <li><strong>Homes:</strong> agents, brokers, and property managers need a plan to list homes. Homeowners can list one home free.</li>
+    <li><strong>Cancel anytime</strong> in Manage My Plan; your plan stays active until the end of the month you paid for.</li>
+    <li>Plans renew monthly. Philippine peso prices use a fixed rate we review every quarter; peso payments are coming soon. See our <a href="terms.html">Terms</a>.</li>
+  </ul>
+</main>
+<footer class="site-footer"><div class="inner">
+  <nav aria-label="Legal">
+    <a href="terms.html">Terms</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="faq.html">FAQs</a>
+    <a href="partners.html">Partners</a>
+    <a href="plans.html" aria-current="page">Plans</a>
+  </nav>
+  <p class="copyright">© 2026 Geerho, LLC</p>
+</div></footer>
+<nav class="tab-bar" aria-label="App">
+  <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
+  <a href="browse.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Browse</span></a>
+  <a href="messages.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Messages</span></a>
+  <a href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Account</span></a>
+</nav>
+</body>
+</html>

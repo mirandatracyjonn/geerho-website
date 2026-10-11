@@ -603,3 +603,24 @@ html { -webkit-tap-highlight-color: transparent; }
   /* The menu already has these as tabs. */
   .site-header .menu nav a[href="browse.html"], .site-header .menu nav a[data-account], .site-header .menu nav a[href="messages.html"] { display: none; }
 }
+
+/* ===== Plans ===== */
+.plans-hero { text-align: center; max-width: 720px; margin: 0 auto; }
+.plans-hero h1 { font-size: clamp(2rem, 5vw, 2.8rem); letter-spacing: -0.02em; }
+.plans-hero .eyebrow { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--link); }
+.plan-cards { list-style: none; padding: 0; margin: 28px 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
+.plan-card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 22px; border-radius: 22px; background: var(--surface); border: 1px solid var(--rule); }
+.plan-card h2 { border: 0; margin: 0; padding: 0; font-size: 1.3rem; }
+.plan-card.featured { background: linear-gradient(160deg, #7389ff, #4557ed); color: #fff; border: 0; box-shadow: 0 16px 34px rgba(69, 87, 237, 0.35); }
+.plan-card.featured .plan-peso, .plan-card.featured .plan-perks { color: rgba(255, 255, 255, 0.9); }
+.plan-card.featured .button { background: #fff; color: #3a44d6; }
+.plan-card.current { outline: 3px solid var(--good); outline-offset: 2px; }
+.plan-tag { position: absolute; top: -12px; right: 18px; margin: 0; padding: 4px 10px; border-radius: 999px; background: linear-gradient(135deg, #e11d2a, #c8102e); color: #fff; font-size: 0.75rem; font-weight: 800; }
+.plan-price { margin: 4px 0 0; color: var(--muted); }
+.plan-price span { font-size: 2rem; font-weight: 900; color: inherit; }
+.plan-card:not(.featured) .plan-price span { color: var(--text); }
+.plan-peso { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.plan-perks { margin: 10px 0 14px; padding-left: 18px; font-size: 0.95rem; flex: 1; }
+.plan-card .button { width: 100%; text-align: center; border: 0; font: inherit; font-weight: 700; cursor: pointer; }
+.plan-card .button:disabled { opacity: 0.7; cursor: default; }
+.plan-card.featured .plan-price, .plan-card.featured .plan-price span, .plan-card.featured h2 { color: #fff; }
