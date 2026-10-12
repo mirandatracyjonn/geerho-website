@@ -1,7 +1,7 @@
 {
   "name": "Geerho",
   "short_name": "Geerho",
-  "description": "Buy, sell, bid, and rent with verified neighbors.",
+  "description": "Buy, sell, bid, rent, and hire. Every member verified.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
