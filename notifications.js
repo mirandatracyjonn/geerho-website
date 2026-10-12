@@ -8,7 +8,7 @@ const status = document.getElementById("status");
 const list = document.getElementById("list");
 const markAll = document.getElementById("mark-all");
 
-const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅" };
+const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨" };
 
 function linkFor(item) {
   switch (item.target) {
