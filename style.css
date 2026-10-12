@@ -624,3 +624,33 @@ html { -webkit-tap-highlight-color: transparent; }
 .plan-card .button { width: 100%; text-align: center; border: 0; font: inherit; font-weight: 700; cursor: pointer; }
 .plan-card .button:disabled { opacity: 0.7; cursor: default; }
 .plan-card.featured .plan-price, .plan-card.featured .plan-price span, .plan-card.featured h2 { color: #fff; }
+
+/* Notification bell (signed in): just left of the menu, same size, with a red count. */
+.site-header .bell {
+  position: relative; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.16); color: #ffffff; text-decoration: none; flex: none;
+}
+.site-header .bell:hover { background: rgba(255, 255, 255, 0.26); filter: none; }
+.site-header .bell:focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+.site-header .bell[aria-current="page"] { background: rgba(255, 255, 255, 0.3); }
+.site-header .bell .count {
+  position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px;
+  background: #e11d2a; color: #ffffff; font-size: 12px; font-weight: 800; line-height: 20px; text-align: center;
+  box-shadow: 0 0 0 2px #4f63f6;
+}
+
+/* Notifications page */
+.notifications-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.notifications { list-style: none; padding: 0; margin: 16px 0; display: flex; flex-direction: column; gap: 8px; }
+.notifications li > a, .notifications li > div {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px;
+  background: var(--surface); color: var(--text); text-decoration: none;
+}
+.notifications li > a:hover { filter: brightness(0.98); }
+.notifications .icon { font-size: 22px; line-height: 1.2; flex: none; }
+.notifications .text { flex: 1; min-width: 0; }
+.notifications .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.notifications time { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.notifications p { margin: 4px 0 0; color: var(--muted); }
+.notifications .unread { width: 10px; height: 10px; border-radius: 50%; background: #e11d2a; flex: none; margin-top: 6px; }
+.notifications li.is-unread > a, .notifications li.is-unread > div { background: rgba(79, 99, 246, 0.08); }

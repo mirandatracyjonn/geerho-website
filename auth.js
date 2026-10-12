@@ -69,6 +69,26 @@ async function updateHeader() {
     if (location.pathname.endsWith("messages.html")) messages.setAttribute("aria-current", "page");
     link.before(messages);
   }
+  addBell();
+}
+
+/** The notification bell, just left of the menu, with a red count of unread notifications (M51). */
+async function addBell() {
+  const menu = document.querySelector(".site-header details.menu");
+  if (!menu || document.querySelector(".site-header .bell")) return;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  for (const [key, value] of Object.entries({ viewBox: "0 0 24 24", width: "22", height: "22", "aria-hidden": "true", focusable: "false" })) svg.setAttribute(key, value);
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  for (const [key, value] of Object.entries({ d: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" })) path.setAttribute(key, value);
+  svg.append(path);
+  const bell = el("a", { href: "notifications.html", class: "bell", "aria-label": "Notifications" }, svg);
+  if (location.pathname.endsWith("notifications.html")) bell.setAttribute("aria-current", "page");
+  menu.before(bell);
+  const { data: count } = await supabase.rpc("unread_notification_count");
+  if (count > 0 && !location.pathname.endsWith("notifications.html")) {
+    bell.append(el("span", { class: "count" }, count > 99 ? "99+" : String(count)));
+    bell.setAttribute("aria-label", `Notifications, ${count} new`);
+  }
 }
 
 // Signed-in pages must never be shown inside another site's frame (clickjacking).
