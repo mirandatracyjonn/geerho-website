@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Geerho Law Enforcement Guidelines</title>
+  <meta name="description" content="How government and law enforcement agencies can request Geerho records with valid legal process.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#5a6ff4">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Geerho">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/supabase-js-2.117.2.js"></script>
+  <script type="module" src="auth.js"></script>
+  <meta property="og:site_name" content="Geerho">
+  <meta property="og:title" content="Geerho Law Enforcement Guidelines">
+  <meta property="og:description" content="How government and law enforcement agencies can request Geerho records with valid legal process.">
+  <meta property="og:image" content="https://geerho.com/og-beta.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Geerho public beta now open: buy and sell, jobs, real estate, and rentals. Join on TestFlight at geerho.com.">
+  <meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="index.html"><img src="logo-mark.png" alt="" width="44" height="44">Geerho</a>
+  <details class="menu">
+    <summary aria-label="Menu"><span class="bars" aria-hidden="true"></span></summary>
+    <nav aria-label="Site">
+      <a href="browse.html">Browse</a>
+    <a href="about.html">About</a>
+    <a href="news.html">News</a>
+      <a href="account.html" data-account>Sign in</a>
+      <a href="contact.html">Contact</a>
+      <a href="download.html" class="nav-cta">Get the app</a>
+    </nav>
+  </details>
+</div></header>
+<main id="main" tabindex="-1">
+  <h1>Law Enforcement Guidelines</h1>
+  <p class="meta">Last updated: October 12, 2026</p>
+  <p class="lead">Every Geerho member verifies their identity, and we want our community to stay safe and protected
+  under the law. When a crime involves Geerho, we help investigators with the records we have, when they give us valid
+  legal process. We also protect our members’ privacy: we don’t give anyone open access to accounts or conversations.</p>
+
+  <h2 id="principles">Our principles</h2>
+  <ul>
+    <li><strong>Valid legal process.</strong> We disclose member records only in response to legal process that is valid
+      in the place it was issued and that we are required to follow, or in an emergency described below. Requests must
+      be specific: name the account (username, profile link, or transaction ID) and the records and dates sought.</li>
+    <li><strong>The process matches the record.</strong> In the United States, we follow the Stored Communications Act:
+      basic account records with a subpoena; other non-content records with a court order (18 U.S.C. § 2703(d)); and the
+      content of messages, including photos, videos, voice messages, files, and deleted messages, only with a search
+      warrant.</li>
+    <li><strong>We tell members.</strong> We notify the member before disclosing their records, unless the law or a court
+      order prohibits it, or notice would create a risk of harm or be counterproductive in an emergency. When a
+      non-disclosure order ends, we notify the member then.</li>
+    <li><strong>Narrow requests.</strong> We may push back on, or ask to narrow, requests that are unclear, overly broad,
+      or not legally valid.</li>
+  </ul>
+
+  <h2 id="records">Records Geerho may have</h2>
+  <div class="table-wrap"><table>
+    <tr><th scope="col">Record</th><th scope="col">What it includes</th><th scope="col">Usually needed (US)</th></tr>
+    <tr><td>Basic account records</td><td>Username, display name, email address, sign-in method, date the account was created, verification status and date, legal name and date of birth from verification, and transaction IDs</td><td>Subpoena</td></tr>
+    <tr><td>Activity records</td><td>Listings (including expired or removed ones), purchase requests, sales, rentals, hired jobs, bids, reviews, reports, and in-app payment records (amounts, dates, status, and the last 4 digits of payout accounts)</td><td>Court order</td></tr>
+    <tr><td>Message records</td><td>Who messaged whom and when, without content</td><td>Court order</td></tr>
+    <tr><td>Message content</td><td>Messages and their photos, videos, voice messages, files, stickers, and shared locations, including copies of messages the sender deleted (kept for 1 year after deletion)</td><td>Search warrant</td></tr>
+  </table></div>
+  <p><strong>What Geerho doesn’t have:</strong> images of members’ IDs or selfies (our verification partner, Didit, handles
+  those under its own policies), full card or bank numbers (held by Stripe in the United States and PayMongo in the
+  Philippines), or anything a member deleted outside the retention periods in our <a href="privacy.html">Privacy Policy</a>.
+  Requests for those should go to the company that holds them.</p>
+
+  <h2 id="preservation">Preservation requests</h2>
+  <p>While you obtain legal process, we will preserve the records of a specific account for 90 days when an official
+  requests it (in the US, under 18 U.S.C. § 2703(f)), and for another 90 days if the request is renewed. Preserved
+  records, including deleted messages, are not deleted while the hold lasts. Preserving records is not disclosing
+  them.</p>
+
+  <h2 id="emergencies">Emergencies</h2>
+  <p>If you believe someone is in imminent danger of death or serious physical injury, we may disclose records without
+  legal process when we believe in good faith that it may prevent the harm. Mark the request “Emergency,” describe the
+  emergency and how the records would help, and send it from an official government email address. Every emergency
+  request is reviewed by a person.</p>
+
+  <h2 id="international">Requests from outside the United States</h2>
+  <p>Geerho operates in the United States and the Philippines. Philippine authorities may send court-issued warrants under
+  the Rule on Cybercrime Warrants (such as a Warrant to Disclose Computer Data) or other legal process valid in the
+  Philippines. For other countries, a Mutual Legal Assistance Treaty request or another process recognized by US law
+  may be required. We may still preserve records and respond to emergencies.</p>
+
+  <h2 id="how">How to submit a request</h2>
+  <p>Email <a href="mailto:support@geerho.com?subject=Law%20enforcement%20request">support@geerho.com</a> with the subject
+  “Law enforcement request” (or “Emergency”) from an official government email address, and include:</p>
+  <ul>
+    <li>your name, agency, badge or ID number, and a way to reach you;</li>
+    <li>the legal process, signed and attached as a PDF (for preservation requests, the request on agency letterhead);</li>
+    <li>the Geerho username, profile link, or transaction ID (such as S-7K3P-9QXM);</li>
+    <li>the specific records sought and the date range; and</li>
+    <li>any non-disclosure order, if one applies.</li>
+  </ul>
+  <p>We don’t accept requests from private parties for member records. Members and their lawyers who need records for a
+  civil case can ask the member to request their own data through Geerho Support, or serve legal process on the other
+  party. We may charge reasonable costs where the law allows.</p>
+
+  <h2 id="members">For members</h2>
+  <p>Report crimes to your local police first. If you were scammed or harmed through Geerho, report the person in the app
+  and contact Geerho Support with the transaction ID, so our moderators can act and preserve the records investigators
+  may need. See also our <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.</p>
+</main>
+<footer class="site-footer"><div class="inner">
+  <nav aria-label="Legal">
+    <a href="terms.html">Terms</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="faq.html">FAQs</a>
+    <a href="partners.html">Partners</a>
+    <a href="plans.html">Plans</a>
+    <a href="law-enforcement.html" aria-current="page">Law Enforcement</a>
+  </nav>
+  <p class="copyright">© 2026 Geerho, LLC</p>
+</div></footer>
+<nav class="tab-bar" aria-label="App">
+  <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
+  <a href="browse.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Browse</span></a>
+  <a href="messages.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Messages</span></a>
+  <a href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Account</span></a>
+</nav>
+</body>
+</html>
