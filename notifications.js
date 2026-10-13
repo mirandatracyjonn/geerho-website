@@ -2,7 +2,7 @@ import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { el } from "./site.js";
 
 // Your notifications (M51): automatic events, Geerho Support replies, team changes, followers, reviews, watch
-// alerts, and license decisions. Opening this page marks them read.
+// alerts, and license decisions. Opening one marks it read; Mark All Read clears the rest.
 
 const status = document.getElementById("status");
 const list = document.getElementById("list");
@@ -38,7 +38,30 @@ function row(item) {
       item.body ? el("p", {}, item.body) : null),
     item.read_at ? null : el("span", { class: "unread", "aria-label": "Unread" }),
   ];
-  return el("li", { class: item.read_at ? "" : "is-unread" }, href ? el("a", { href }, ...content) : el("div", {}, ...content));
+  const li = el("li", { class: item.read_at ? "" : "is-unread" }, href ? el("a", { href }, ...content) : el("div", {}, ...content));
+  // Opening (or tapping) a notification marks it read, like the app.
+  if (!item.read_at) {
+    li.firstElementChild.addEventListener("click", async (event) => {
+      const link = event.currentTarget.getAttribute("href");
+      if (link) event.preventDefault();
+      await markRead(item.id, li);
+      if (link) location.href = link;
+    });
+  }
+  return li;
+}
+
+async function markRead(id, li) {
+  await supabase.rpc("mark_notifications_read", { ids: [id] });
+  li.classList.remove("is-unread");
+  li.querySelector(".unread")?.remove();
+  const remaining = list.querySelectorAll(".is-unread").length;
+  markAll.hidden = remaining === 0;
+  const count = document.querySelector(".site-header .bell .count");
+  if (count) {
+    if (remaining === 0) count.remove();
+    else count.textContent = remaining > 99 ? "99+" : String(remaining);
+  }
 }
 
 async function load() {
