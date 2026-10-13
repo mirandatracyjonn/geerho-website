@@ -19,6 +19,7 @@ FOOTER = [
     ("terms.html", "Terms"),
     ("privacy.html", "Privacy"),
     ("faq.html", "FAQs"),
+    ("community-guidelines.html", "Community Guidelines"),
     ("partners.html", "Partners"),
     ("plans.html", "Plans"),
     ("law-enforcement.html", "Law Enforcement"),
