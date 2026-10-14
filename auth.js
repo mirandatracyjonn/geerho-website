@@ -45,7 +45,12 @@ export async function signInWith(provider, next) {
   const redirectTo = new URL(`account.html${next ? `?next=${encodeURIComponent(next)}` : ""}`, location.href).href;
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo, scopes: provider === "github" ? "read:user user:email" : undefined },
+    options: {
+      redirectTo,
+      scopes: provider === "github" ? "read:user user:email" : undefined,
+      // Ask which Google account every time, like the apps (people with more than one account).
+      queryParams: provider === "google" ? { prompt: "select_account" } : undefined,
+    },
   });
   if (error) throw error;
 }
