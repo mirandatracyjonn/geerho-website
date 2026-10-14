@@ -81,12 +81,36 @@
       <button type="button" class="secondary" id="existing-account">I already have a Geerho account</button>
       <p class="status bad" id="existing-error" role="alert" hidden></p>
     </div>
+
+    <div class="panel" id="recovery">
+      <h2>Lost access to your account?</h2>
+      <p>Can't sign in the way you used to anymore? Geerho moderators can give you your account back after checking that it's really you: a photo of your government ID, two proofs of address, and a short WhatsApp video call where you sign your name three times. This works only for accounts that completed ID verification.</p>
+      <div id="recovery-status" hidden></div>
+      <form id="recovery-form" novalidate hidden>
+        <div><label for="rec-username">Your Geerho username</label>
+          <input type="text" id="rec-username" autocapitalize="none" spellcheck="false" maxlength="31" placeholder="@username" required></div>
+        <div><label for="rec-name">Full name as on your ID</label><input type="text" id="rec-name" maxlength="120" autocomplete="name" required></div>
+        <div><label for="rec-birth">Date of birth</label><input type="date" id="rec-birth" required></div>
+        <div><label for="rec-phone">WhatsApp number <span class="hint">with country code, for example +1 559 555 0100. A moderator calls it for a short video call.</span></label>
+          <input type="tel" id="rec-phone" maxlength="20" autocomplete="tel" required></div>
+        <div><label for="rec-what">What happened?</label><textarea id="rec-what" maxlength="1000" placeholder="For example: I lost my Google account." required></textarea></div>
+        <div><label for="rec-id">Government ID <span class="hint">Front, and the back if it has details. Valid and not expired; one that shows your signature is best.</span></label>
+          <input type="file" id="rec-id" multiple accept="image/jpeg,image/png,image/webp,image/heic" required></div>
+        <div><label for="rec-proofs">Two proofs of address <span class="hint">From the last 3 months with your name and home address: a utility bill, bank statement, lease, and so on.</span></label>
+          <input type="file" id="rec-proofs" multiple accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" required></div>
+        <button type="submit">Send to moderators</button>
+        <p class="status bad" id="recovery-error" role="alert" hidden></p>
+        <p class="hint">Only Geerho moderators see your documents, and they're deleted when your request ends. The account's owner is told about your request; if it isn't you, they can stop it.</p>
+      </form>
+    </div>
   </section>
 
   <section id="signed-in" hidden>
     <h1 id="greeting">Your account</h1>
     <p class="meta" id="signed-in-as"></p>
     <p class="status good" id="notice" role="status" hidden></p>
+
+    <div class="panel" id="recovery-alert" hidden></div>
 
     <h2>Username</h2>
     <div class="panel" id="username-panel">

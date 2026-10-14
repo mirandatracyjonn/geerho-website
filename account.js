@@ -119,6 +119,97 @@ async function renderUsernameChange(user, profile) {
   });
 }
 
+// --- Account recovery (M61) --------------------------------------------------------------------------------
+// From a new sign-in (no username yet): ask moderators to recover an account; then follow the request.
+
+const RECOVERY_BUCKET = "recovery-documents";
+const OPEN_RECOVERY = ["submitted", "call_scheduled", "call_done"];
+const when = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+async function renderRecovery(user) {
+  const status = document.getElementById("recovery-status");
+  const form = document.getElementById("recovery-form");
+  const { data: request } = await supabase.rpc("my_recovery_request");
+  const showStatus = request && (OPEN_RECOVERY.includes(request.status) || ["rejected", "blocked"].includes(request.status));
+  form.hidden = showStatus;
+  status.hidden = !showStatus;
+  if (showStatus) {
+    const step = (text, done) => `<li>${done ? "✓" : "○"} ${text}</li>`;
+    const safe = (text) => String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    status.innerHTML = `<p><strong>Request for @${safe(request.username)}</strong>, sent ${when(request.created_at)}.</p><ul class="link-list">`
+      + step("Documents sent", true)
+      + step(request.call_at ? `Video call on WhatsApp: ${when(request.call_at)}` : "A moderator checks your documents and schedules a WhatsApp video call", request.status !== "submitted")
+      + step("Video call: sign your name three times on blank paper while the moderator watches", request.status === "call_done")
+      + step(`A Super Admin finishes, no earlier than ${when(request.ready_at)}`, false) + "</ul>"
+      + (request.note && !OPEN_RECOVERY.includes(request.status) ? `<p class="status bad">${safe(request.note)}</p>` : "")
+      + (OPEN_RECOVERY.includes(request.status)
+        ? `<p class="hint">Keep WhatsApp handy. When it's done, sign in the same way you did today and you'll be in your account.</p><button type="button" class="secondary" id="recovery-cancel">Cancel request</button>`
+        : "");
+    document.getElementById("recovery-cancel")?.addEventListener("click", async () => {
+      if (!confirm("Cancel your recovery request? Your documents are deleted.")) return;
+      const { data: documents, error } = await supabase.rpc("cancel_account_recovery");
+      if (!error && documents?.length) await supabase.storage.from(RECOVERY_BUCKET).remove(documents.map((d) => d.path));
+      renderRecovery(user);
+    });
+    return;
+  }
+  if (form.dataset.wired) return;
+  form.dataset.wired = "1";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const error = document.getElementById("recovery-error");
+    const fail = (message) => { error.textContent = message; error.hidden = false; };
+    error.hidden = true;
+    const ids = [...document.getElementById("rec-id").files];
+    const proofs = [...document.getElementById("rec-proofs").files];
+    if (ids.length < 1 || ids.length > 2) return fail("Add one or two photos of your ID (front, and back if needed).");
+    if (proofs.length < 2 || proofs.length > 3) return fail("Add two proofs of address.");
+    if ([...ids, ...proofs].some((file) => file.size > 15 * 1024 * 1024)) return fail("Each file must be smaller than 15 MB.");
+    const button = form.querySelector("button");
+    button.disabled = true;
+    const uploaded = [];
+    try {
+      for (const [kind, files] of [["government_id", ids], ["proof_of_address", proofs]]) {
+        for (const file of files) {
+          const extension = file.type === "application/pdf" ? "pdf" : (file.type.split("/")[1] || "jpg");
+          const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
+          const { error: uploadError } = await supabase.storage.from(RECOVERY_BUCKET).upload(path, file, { contentType: file.type });
+          if (uploadError) throw new Error(`“${file.name}” couldn't be uploaded. Check your connection and try again.`);
+          uploaded.push({ path, kind });
+        }
+      }
+      const { error: requestError } = await supabase.rpc("request_account_recovery", {
+        username: document.getElementById("rec-username").value.trim().toLowerCase().replace(/^@/, ""),
+        legal_name: document.getElementById("rec-name").value.trim(),
+        date_of_birth: document.getElementById("rec-birth").value,
+        whatsapp: document.getElementById("rec-phone").value,
+        what_happened: document.getElementById("rec-what").value.trim(),
+        documents: uploaded,
+      });
+      if (requestError) throw requestError;
+      renderRecovery(user);
+    } catch (problem) {
+      if (uploaded.length) await supabase.storage.from(RECOVERY_BUCKET).remove(uploaded.map((d) => d.path));
+      fail(problem.message ? problem.message : friendlyError(problem));
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+// Signed in to an account someone is asking to recover: "This wasn't me".
+async function renderRecoveryAlert() {
+  const panel = document.getElementById("recovery-alert");
+  const { data: open } = await supabase.rpc("recovery_requests_for_me");
+  if (!open?.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  panel.innerHTML = `<h2>Someone asked to recover your account</h2><p>On ${when(open[0].created_at)}, someone asked Geerho moderators to recover this account. If that was you, there's nothing to do. If not, stop it now.</p><button type="button" class="secondary" id="recovery-object">This wasn't me</button>`;
+  document.getElementById("recovery-object").addEventListener("click", async () => {
+    for (const request of open) await supabase.rpc("object_to_recovery", { request: request.id });
+    panel.innerHTML = `<p class="status good">Stopped. Your account stays as it is.</p>`;
+  });
+}
+
 // --- "I already have a Geerho account" ---------------------------------------------------------------------
 // A brand-new account (no username yet) can remove itself so the person signs in to the account they already have.
 
@@ -352,7 +443,10 @@ async function render() {
     setupDelete(user);
     wired = true;
   }
-  if (!profile.username) return show("username");
+  if (!profile.username) {
+    show("username");
+    return renderRecovery(user);
+  }
   if (next) return location.replace(next);
 
   document.getElementById("greeting").textContent = `Hi, @${profile.username}`;
@@ -363,6 +457,7 @@ async function render() {
     notice.hidden = false;
   }
   show("signedIn");
+  await renderRecoveryAlert();
   await renderUsernameChange(user, profile);
   await renderVerification(profile);
   await renderSignInMethods();
