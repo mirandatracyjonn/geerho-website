@@ -129,15 +129,25 @@ function actions(listing) {
       : friendlyError(problem));
     error.hidden = false;
   });
+  // Items and auctions can be bought and bid on right here (website parity); rentals, homes, and services still in the app.
+  const onWeb = (listing.kind ?? "item") === "item" && listing.listing_format !== "rental";
+  const webBox = el("div", { class: "web-commerce" });
+  if (onWeb) {
+    import("./web-commerce.js").then(async ({ auctionPanel, buyPanel }) => {
+      const panel = listing.listing_format === "auction" ? await auctionPanel(listing) : await buyPanel(listing);
+      if (panel) webBox.append(panel);
+    });
+  }
   return el("div", { class: "in-app" },
-    el("a", { class: "button", href: appLink(listing.reference) }, `${verb} in the app`),
+    onWeb ? webBox : el("a", { class: "button", href: appLink(listing.reference) }, `${verb} in the app`),
     message,
     error,
     el("p", { class: "hint" }, listing.kind === "service" || listing.kind === "job"
       ? "Quote requests and job responses on the website are coming soon. Every member verifies their identity first."
       : isHome
       ? "Tour requests on the website are coming soon. Never send money before you've seen the home and confirmed the lister is authorized."
-      : `${verb === "Buy" ? "Buying" : verb === "Bid" ? "Bidding" : "Renting"} on the website is coming soon. Every member verifies their identity before transacting.`),
+      : onWeb ? "Every member verifies their identity before buying or bidding. Pay only through Geerho."
+      : "Renting on the website is coming soon. Every member verifies their identity before transacting."),
   );
 }
 
