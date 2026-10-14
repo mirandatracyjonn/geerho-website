@@ -221,3 +221,24 @@ export function richText(text) {
   }
   return root;
 }
+
+/** Featured listings (M73): live listings sellers paid to show first, in a fair rotation; as cards. */
+export async function featuredCards(kind = null, max = 8) {
+  const ids = await request("rpc/featured_listings", { method: "POST", body: JSON.stringify({ kind, max_rows: max }) }).catch(() => []);
+  const cards = [];
+  for (const { id } of ids ?? []) {
+    const listing = await getListing(id).catch(() => null);
+    if (!listing) continue;
+    const photo = [...(listing.listing_photos ?? [])].sort((a, b) => a.position - b.position)[0];
+    const card = listingCard({ ...listing, cover_path: photo?.storage_path });
+    card.querySelector(".card-photo")?.append(el("span", { class: "badge featured" }, "Featured"));
+    cards.push(card);
+  }
+  return cards;
+}
+
+/** When this listing's featured time ends, or null if it isn't featured. */
+export function featuredUntil(id) {
+  return request("rpc/featured_until", { method: "POST", body: JSON.stringify({ listing: id }) });
+}
+

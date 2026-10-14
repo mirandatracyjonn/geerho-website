@@ -1,5 +1,5 @@
 // Listing page: one listing with photos, price, details, seller, and the address rules for homes.
-import { CONDITIONS, appLink, areaText, el, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
+import { CONDITIONS, appLink, areaText, el, featuredUntil, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
   propertyFacts, timeLeft, richText } from "./site.js";
 
 const PETS = { none: "No pets", cats: "Cats OK", dogs: "Dogs OK", cats_and_dogs: "Cats and dogs OK" };
@@ -163,11 +163,13 @@ async function render() {
   const isHome = listing.kind === "rental" || listing.kind === "property_sale";
   const address = isHome ? await getAddress(listing.id).catch(() => null) : null;
   const badge = formatBadge(listing);
+  const featured = await featuredUntil(listing.id).catch(() => null);
   const seller = el("p", { class: "seller" }, isHome ? "Listed by a verified Geerho member." : "Sold by a verified Geerho member.");
   article.append(
     gallery(listing.listing_photos ?? []),
     el("div", { class: "listing-body" },
       badge && el("span", { class: "badge inline" }, badge),
+      featured && el("span", { class: "badge inline featured" }, "Featured"),
       el("h1", {}, listing.title),
       el("p", { class: "listing-price" }, priceLine(listing)),
       actions(listing),

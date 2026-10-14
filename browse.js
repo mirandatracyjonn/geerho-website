@@ -1,4 +1,10 @@
-import { getCategories, listingCard, searchListings } from "./site.js";
+import { featuredCards, getCategories, listingCard, searchListings } from "./site.js";
+
+featuredCards().then((cards) => {
+  if (!cards.length) return;
+  document.getElementById("featured").append(...cards);
+  document.getElementById("featured-strip").hidden = false;
+});
 
 const PAGE_SIZE = 24;
 const form = document.getElementById("filters");

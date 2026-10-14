@@ -1,5 +1,11 @@
 // Home page: loads the latest active listings.
-import { listingCard, searchListings } from "./site.js";
+import { featuredCards, listingCard, searchListings } from "./site.js";
+
+featuredCards().then((cards) => {
+  if (!cards.length) return;
+  document.getElementById("featured").append(...cards);
+  document.getElementById("featured-section").hidden = false;
+});
 
 const list = document.getElementById("latest");
 const status = document.getElementById("latest-status");

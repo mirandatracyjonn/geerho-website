@@ -681,3 +681,6 @@ html { -webkit-tap-highlight-color: transparent; }
 .guide-step img { width: 100%; height: auto; border-radius: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
 .guide-step h3 { margin-top: 0; }
 @media (max-width: 520px) { .guide-step { grid-template-columns: 1fr; } .guide-step img { max-width: 260px; } }
+
+.badge.featured { background: linear-gradient(135deg, #f7b733, #fc4a1a); color: #fff; left: auto; right: 8px; }
+.featured-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
