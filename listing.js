@@ -1,3 +1,4 @@
+// Listing page: one listing with photos, price, details, seller, and the address rules for homes.
 import { CONDITIONS, appLink, areaText, el, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
   propertyFacts, timeLeft, richText } from "./site.js";
 

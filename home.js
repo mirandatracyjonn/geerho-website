@@ -1,3 +1,4 @@
+// Home page: loads the latest active listings.
 import { listingCard, searchListings } from "./site.js";
 
 const list = document.getElementById("latest");

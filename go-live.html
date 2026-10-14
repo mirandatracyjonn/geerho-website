@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>How to go live · Geerho</title>
+  <meta name="description" content="How to sell live on Geerho with your own Amazon IVS, YouTube Live, Facebook Live, or Twitch: video guide and step by step.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#5a6ff4">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Geerho">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  
+  <script src="vendor/supabase-js-2.117.2.js"></script>
+  <script type="module" src="auth.js"></script>
+  <meta property="og:site_name" content="Geerho">
+  <meta property="og:title" content="How to go live on Geerho">
+  <meta property="og:description" content="How to sell live on Geerho with your own Amazon IVS, YouTube Live, Facebook Live, or Twitch: video guide and step by step.">
+  <meta property="og:image" content="https://geerho.com/og-beta.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Geerho public beta now open: buy and sell, jobs, real estate, and rentals. Join on TestFlight at geerho.com.">
+  <meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header class="site-header"><div class="inner">
+  <a class="brand" href="index.html"><img src="logo-mark.png" alt="" width="44" height="44">Geerho</a>
+  <details class="menu">
+    <summary aria-label="Menu"><span class="bars" aria-hidden="true"></span></summary>
+    <nav aria-label="Site">
+      <a href="browse.html">Browse</a>
+      <a href="live.html">Live</a>
+    <a href="about.html">About</a>
+    <a href="news.html">News</a>
+      <a href="account.html" data-account>Sign in</a>
+      <a href="contact.html">Contact</a>
+      <a href="download.html" class="nav-cta">Get the app</a>
+    </nav>
+  </details>
+</div></header>
+<main id="main" tabindex="-1">
+  <h1>How to go live</h1>
+  <p class="lead">Sell live to your followers with your own Amazon IVS, YouTube Live, Facebook Live, or Twitch account. Geerho doesn't charge for streaming; live shows are for selling your listings (no virtual gifts).</p>
+  <video class="guide-video" src="guide/go-live.mp4" poster="guide/go-live-poster.jpg" controls playsinline preload="metadata"></video>
+  <p class="hint">The video has a voice guide; the steps below say the same thing.</p>
+
+  <h2>In the Geerho app</h2>
+  <ol class="guide-steps">
+    <li class="guide-step"><img src="guide/01-profile-go-live.jpg" alt="Open Profile, then Go Live" width="300" loading="lazy"><div><h3>1. Open Profile, then Go Live</h3><p>You need to be ID-verified to go live.</p></div></li>
+    <li class="guide-step"><img src="guide/02-go-live-channel.jpg" alt="Choose your platform and save your channel" width="300" loading="lazy"><div><h3>2. Choose your platform and save your channel</h3><p>Pick Amazon IVS, YouTube Live, Facebook Live, or Twitch, paste your channel link (see below for where to find it), and tap Save Channel.</p></div></li>
+    <li class="guide-step"><img src="guide/05-stream-from-this-phone.jpg" alt="Streaming from this phone? Add your server and stream key" width="300" loading="lazy"><div><h3>3. Streaming from this phone? Add your server and stream key</h3><p>They stay on your phone and are never sent to Geerho. Using OBS, Larix, or an external camera? Leave these empty and put the stream key in that app instead.</p></div></li>
+    <li class="guide-step"><img src="guide/06-start-a-show.jpg" alt="Name your show and pick what you're selling" width="300" loading="lazy"><div><h3>4. Name your show and pick what you're selling</h3><p>Feature up to 12 of your live listings. Buyers check out as usual.</p></div></li>
+    <li class="guide-step"><img src="guide/07-go-live-buttons.jpg" alt="Go live" width="300" loading="lazy"><div><h3>5. Go live</h3><p>Tap Go Live with This Phone's Camera, or start streaming in your other app and tap Go Live with an External App. Your followers get a notification. Tap End Show when you're done.</p></div></li>
+  </ol>
+
+  <h2>Set up your platform</h2>
+  <details class="help-article" open><summary>Amazon IVS</summary>
+    <p>In the <a href="https://console.aws.amazon.com/ivs/" rel="noopener">Amazon IVS console</a>, create a channel (low latency). Copy its <strong>Playback URL</strong> into Geerho. The <strong>Ingest server</strong> and <strong>Stream key</strong> go into your broadcasting app, or into Geerho's “Stream from this phone”. AWS bills your account directly.</p></details>
+  <details class="help-article"><summary>YouTube Live</summary>
+    <p>In <a href="https://studio.youtube.com" rel="noopener">YouTube Studio</a>, choose Go Live → Stream (your channel must be enabled for live streaming; it can take up to 24 hours the first time). In Geerho, paste your channel link (youtube.com/channel/UC…); it always shows your current live stream. Copy the <strong>Stream key</strong> into your broadcasting app or into Geerho's “Stream from this phone” (the server is filled in for you).</p></details>
+  <details class="help-article"><summary>Facebook Live</summary>
+    <p>Open <a href="https://www.facebook.com/live/producer" rel="noopener">Facebook Live Producer</a> and choose Streaming software. Copy the <strong>Stream key</strong> into your broadcasting app or Geerho's “Stream from this phone”. Facebook makes a new video for each broadcast, so when you go live, paste that video's link (facebook.com/…/videos/…) in “Live video link for this show”.</p></details>
+  <details class="help-article"><summary>Twitch</summary>
+    <p>In your <a href="https://dashboard.twitch.tv/settings/stream" rel="noopener">Twitch Creator Dashboard → Settings → Stream</a>, copy your <strong>Primary Stream key</strong> into your broadcasting app or Geerho's “Stream from this phone”. In Geerho, paste your channel link (twitch.tv/yourname).</p></details>
+
+  <h2>While you're live</h2>
+  <ul>
+    <li>Viewers double-tap the video to send hearts; more hearts move your show up in Live now. Hearts are free likes, not gifts.</li>
+    <li>Chat with buyers. You can remove messages in your own show.</li>
+    <li>Follow the <a href="community-guidelines.html#live">Community Guidelines for live shows</a>: show the real item, no children on camera, nothing illegal.</li>
+    <li>Never share your stream key. Geerho will never ask for it.</li>
+  </ul>
+  <p>More questions? Search the <a href="help.html?q=go%20live">User Handbook</a> or <a href="contact.html">contact Geerho Support</a>.</p>
+</main>
+<footer class="site-footer"><div class="inner">
+  <nav aria-label="Legal">
+    <a href="terms.html">Terms</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="help.html">User Handbook</a>
+    <a href="faq.html">FAQs</a>
+    <a href="community-guidelines.html">Community Guidelines</a>
+    <a href="partners.html">Partners</a>
+    <a href="plans.html">Plans</a>
+    <a href="law-enforcement.html">Law Enforcement</a>
+  </nav>
+  <p class="copyright">© 2026 Geerho, LLC</p>
+</div></footer>
+<nav class="tab-bar" aria-label="App">
+  <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
+  <a href="browse.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Browse</span></a>
+  <a href="messages.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Messages</span></a>
+  <a href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Account</span></a>
+</nav>
+</body>
+</html>

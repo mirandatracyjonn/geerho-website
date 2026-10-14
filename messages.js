@@ -1,3 +1,4 @@
+// Messages page: your chats, messages, reactions, and reporting, refreshed every few seconds.
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { el, money, photoURL } from "./site.js";
 

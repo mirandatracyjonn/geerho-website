@@ -1,3 +1,4 @@
+// Download page: shows why the visitor was sent to get the app (a transaction ID) and the TestFlight / App Store links.
 import { APP_STORE_URL, TESTFLIGHT_URL, el } from "./site.js";
 
 const reference = new URLSearchParams(location.search).get("for");

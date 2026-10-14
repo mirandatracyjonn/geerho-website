@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co https://*.live-video.net; media-src 'self' blob: https://*.live-video.net; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co https://*.live-video.net; media-src 'self' blob: https://*.live-video.net; worker-src 'self' blob:; frame-src https://www.youtube.com https://player.twitch.tv https://www.facebook.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -50,13 +50,13 @@
 <main id="main" tabindex="-1" class="wide">
   <section id="now">
     <h1>Live now</h1>
-    <p class="meta">Sellers streaming right now. Watch, chat, and shop what they feature. To go live yourself, use the <a href="download.html">Geerho app</a> (Profile → Go Live).</p>
+    <p class="meta">Sellers streaming right now. Watch, chat, and shop what they feature. To go live yourself, use the <a href="download.html">Geerho app</a> (Profile → Go Live). <a href="go-live.html">How to go live</a>.</p>
     <p class="status-line" id="now-status" role="status" aria-live="polite"></p>
     <ul class="cards" id="shows"></ul>
   </section>
   <section id="show" hidden>
     <p><a href="live.html">← All live shows</a></p>
-    <div class="live-video"><video id="video" controls playsinline autoplay muted aria-label="Live video"></video></div>
+    <div class="live-video"><video id="video" controls playsinline autoplay muted aria-label="Live video"></video><iframe id="embed" title="Live video" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen hidden></iframe><div class="heart-zone" id="heart-zone" hidden></div><button type="button" class="heart-count" id="heart-count" hidden aria-label="Send a heart">♥ 0</button></div>
     <h1 id="show-title"></h1>
     <p class="meta" id="show-host"></p>
     <p class="status bad" id="show-ended" hidden>This live show has ended.</p>

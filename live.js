@@ -20,7 +20,7 @@ async function renderNow() {
           : el("span", { class: "no-photo" }, "Live"),
         el("span", { class: "badge live" }, "LIVE")),
       el("span", { class: "card-title" }, show.title),
-      el("span", { class: "card-meta" }, `${hostName(show)} · since ${time(show.started_at)}`)))));
+      el("span", { class: "card-meta" }, `${hostName(show)} · since ${time(show.started_at)}${show.hearts ? ` · ♥ ${show.hearts}` : ""}`)))));
   status.textContent = data?.length ? "" : "Nobody is live right now. Check back soon.";
 }
 
@@ -42,7 +42,13 @@ async function renderShow() {
     show.is_live ? el("span", { class: "badge live" }, "LIVE") : "", " ", hostName(show), show.host_verified ? " · ✓ Verified" : "");
 
   const video = document.getElementById("video");
-  if (show.is_live && show.playback_url) {
+  if (show.is_live && show.embed_url) {
+    // YouTube, Facebook, and Twitch: their official embedded player (M69).
+    video.hidden = true;
+    const frame = document.getElementById("embed");
+    frame.src = show.embed_url;
+    frame.hidden = false;
+  } else if (show.is_live && show.playback_url) {
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = show.playback_url;                 // Safari plays HLS itself
     } else if (window.Hls?.isSupported()) {
@@ -54,6 +60,8 @@ async function renderShow() {
     video.closest(".live-video").hidden = true;
     document.getElementById("show-ended").hidden = false;
   }
+
+  if (show.is_live) setUpHearts(show);
 
   const featured = [];
   for (const id of show.listing_ids ?? []) {
@@ -84,6 +92,33 @@ async function renderShow() {
     input.value = "";
     loadChat();
   });
+}
+
+// Double-tap (double-click) hearts (M70): each one floats a heart and counts as a like; sent in batches.
+function setUpHearts(show) {
+  const zone = document.getElementById("heart-zone");
+  const counter = document.getElementById("heart-count");
+  let total = Number(show.hearts ?? 0), pending = 0;
+  const label = () => { counter.textContent = `♥ ${new Intl.NumberFormat(undefined, { notation: "compact" }).format(total)}`; };
+  const add = async (x, y) => {
+    if (!(await currentUser())) { location.href = "account.html?next=" + encodeURIComponent(location.pathname.slice(1) + location.search); return; }
+    pending += 1; total += 1; label();
+    if (x !== undefined) {
+      const heart = el("span", { class: "floating-heart", "aria-hidden": "true" }, "♥");
+      heart.style.left = `${x}px`; heart.style.top = `${y}px`;
+      zone.append(heart);
+      setTimeout(() => heart.remove(), 1200);
+    }
+  };
+  zone.hidden = false; counter.hidden = false; label();
+  zone.addEventListener("dblclick", (event) => { const r = zone.getBoundingClientRect(); add(event.clientX - r.left, event.clientY - r.top); });
+  counter.addEventListener("click", () => add());
+  setInterval(async () => {
+    if (!pending) return;
+    const taps = pending; pending = 0;
+    const { data } = await supabase.rpc("heart_live_show", { show: showId, taps });
+    if (typeof data === "number") { total = Math.max(total, data); label(); }
+  }, 1500);
 }
 
 async function loadChat() {
