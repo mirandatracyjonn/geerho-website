@@ -98,7 +98,8 @@ export async function auctionPanel(listing) {
   const ends = a.auction_ends_at ? new Date(a.auction_ends_at) : null;
   const live = a.auction_state === "live" && ends && ends > new Date();
   panel.append(el("p", { class: "listing-price" }, a.current_bid_cents ? `${money(a.current_bid_cents, listing.currency)} · ${a.bid_count} ${a.bid_count === 1 ? "bid" : "bids"}` : "No bids yet"),
-    el("p", { class: "meta" }, live ? `Ends ${ends.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}` : "This auction has ended.",
+    el("p", { class: "meta" }, live ? `Ends ${ends.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}`
+      : a.auction_state ? "This auction has ended." : "This auction hasn't started yet.",
       a.reserve_met === false ? " · Reserve not met yet" : ""));
   if (a.i_won && a.needs_checkout) {
     panel.append(el("p", { class: "status good" }, "You won! Complete your purchase."), await buyPanel(listing, { auctionWin: true }));
