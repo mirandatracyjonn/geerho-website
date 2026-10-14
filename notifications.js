@@ -8,13 +8,14 @@ const status = document.getElementById("status");
 const list = document.getElementById("list");
 const markAll = document.getElementById("mark-all");
 
-const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨" };
+const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨", live: "🔴" };
 
 function linkFor(item) {
   switch (item.target) {
     case "conversation": return `messages.html?c=${encodeURIComponent(item.target_id)}`;
     case "listing": return `listing.html?id=${encodeURIComponent(item.target_id)}`;
     case "support": return "contact.html";
+    case "live": return `live.html?show=${encodeURIComponent(item.target_id)}`;
     default: return null; // team, profiles, licenses, and watching are in the app
   }
 }
