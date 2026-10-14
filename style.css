@@ -684,3 +684,17 @@ html { -webkit-tap-highlight-color: transparent; }
 
 .badge.featured { background: linear-gradient(135deg, #f7b733, #fc4a1a); color: #fff; left: auto; right: 8px; }
 .featured-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
+/* In-page dialogs (ui-dialog.js) */
+.g-dialog { border: 0; border-radius: 18px; padding: 24px; width: min(92vw, 440px); background: var(--bg); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.g-dialog::backdrop { background: rgba(0,0,0,.45); }
+.g-dialog h2 { margin: 0 0 8px; font-size: 1.25rem; }
+.g-dialog textarea { width: 100%; box-sizing: border-box; margin-top: 8px; }
+.g-dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+.g-dialog-actions button.danger { background: var(--bad); color: #fff; }
+.g-stars { display: flex; gap: 6px; justify-content: center; margin: 8px 0 0; }
+.g-stars button { font-size: 40px; line-height: 1; background: none; border: 0; padding: 4px; color: var(--rule); cursor: pointer; }
+.g-stars button.on { color: #ffb400; }
+.g-stars button:focus-visible { outline: 2px solid var(--accent); border-radius: 8px; }
+.g-stars-label { text-align: center; color: var(--muted); margin: 4px 0 0; min-height: 1.3em; }
+.g-count { text-align: right; margin: 4px 0 0; }

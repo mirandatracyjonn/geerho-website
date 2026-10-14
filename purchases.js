@@ -2,6 +2,7 @@
 // report. Same tables and functions as the apps' Profile → Purchases.
 import { el, money } from "./site.js";
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
+import { confirmDialog, reviewDialog, textDialog } from "./ui-dialog.js";
 
 const status = document.getElementById("p-status");
 const requestsBox = document.getElementById("requests");
@@ -47,7 +48,10 @@ async function render() {
       buttons.append(payButton);
     }
     const cancel = el("button", { type: "button", class: "secondary" }, "Cancel request");
-    cancel.addEventListener("click", () => { if (confirm("Cancel this purchase request?")) act(supabase.rpc("cancel_order", { order_id: o.id }), "Request canceled."); });
+    cancel.addEventListener("click", async () => {
+      if (await confirmDialog("Cancel this request?", "The seller is told, and any payment hold is released.", "Cancel Request", { danger: true }))
+        act(supabase.rpc("cancel_order", { order_id: o.id }), "Request canceled.");
+    });
     buttons.append(cancel);
     row.append(buttons);
     return row;
@@ -63,20 +67,22 @@ async function render() {
     const buttons = el("div", { class: "actions" });
     if (!s.received_at) {
       const got = el("button", { type: "button" }, "I got it");
-      got.addEventListener("click", () => { if (confirm("Confirm you have the item? Any held payment goes to the seller.")) act(supabase.rpc("confirm_received", { sale: s.id }), "Thanks! The seller has been paid."); });
+      got.addEventListener("click", async () => {
+        if (await confirmDialog("Got the item?", "Confirm only once you have it and it's as described. Any payment Geerho is holding goes to the seller.", "Yes, I Got It"))
+          act(supabase.rpc("confirm_received", { sale: s.id }), "Thanks! The seller has been paid.");
+      });
       const problem = el("button", { type: "button", class: "secondary" }, "Report a problem");
-      problem.addEventListener("click", () => {
-        const details = prompt("What's wrong? (A moderator reviews it; the payment stays on hold.)");
-        if (details && details.trim().length >= 10) act(supabase.rpc("report_payment_problem", { sale: s.id, details: details.trim() }), "Reported. A moderator will review it.");
+      problem.addEventListener("click", async () => {
+        const details = await textDialog("Report a problem", "Tell us what's wrong. A moderator reviews it, and the payment stays on hold meanwhile.",
+          { okLabel: "Report", placeholder: "e.g. The item hasn't arrived and the seller isn't answering." });
+        if (details) act(supabase.rpc("report_payment_problem", { sale: s.id, details }), "Reported. A moderator will review it.");
       });
       buttons.append(got, problem);
     } else if (!reviewed.has(s.id)) {
       const review = el("button", { type: "button", class: "secondary" }, "Leave a review");
-      review.addEventListener("click", () => {
-        const rating = Number(prompt("Rate the seller from 1 to 5 stars", "5"));
-        if (!(rating >= 1 && rating <= 5)) return;
-        const body = prompt("A few words about the seller (optional)") ?? "";
-        act(supabase.rpc("leave_review", { sale: s.id, rating: Math.round(rating), ...(body.trim() ? { body: body.trim() } : {}) }), "Thanks for your review!");
+      review.addEventListener("click", async () => {
+        const result = await reviewDialog("the seller");
+        if (result) act(supabase.rpc("leave_review", { sale: s.id, rating: result.rating, ...(result.body ? { body: result.body } : {}) }), "Thanks for your review!");
       });
       buttons.append(review);
     }

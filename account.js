@@ -155,7 +155,8 @@ async function renderRecovery(user) {
         ? `<p class="hint">Keep WhatsApp handy. When it's done, sign in the same way you did today and you'll be in your account.</p><button type="button" class="secondary" id="recovery-cancel">Cancel request</button>`
         : "");
     document.getElementById("recovery-cancel")?.addEventListener("click", async () => {
-      if (!confirm("Cancel your recovery request? Your documents are deleted.")) return;
+      const { confirmDialog } = await import("./ui-dialog.js");
+      if (!(await confirmDialog("Cancel your recovery request?", "Your documents are deleted.", "Cancel Request", { danger: true }))) return;
       const { data: documents, error } = await supabase.rpc("cancel_account_recovery");
       if (!error && documents?.length) await supabase.storage.from(RECOVERY_BUCKET).remove(documents.map((d) => d.path));
       renderRecovery(user);
