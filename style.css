@@ -752,3 +752,10 @@ html { -webkit-tap-highlight-color: transparent; }
 /* On the web, the buy/auction box is the main card: no grey box around it. */
 .in-app:has(.web-commerce) { background: none; padding: 0; }
 .web-commerce .panel { border: 1px solid var(--rule); }
+
+/* Final 2 minutes of an auction: red banner with a big ticking timer. */
+.au-final { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 14px; background: #c62828; color: #fff; animation: au-pulse 1s ease-in-out infinite alternate; }
+.au-final-label { font-weight: 700; }
+.au-final-clock { font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+@keyframes au-pulse { from { filter: brightness(1); } to { filter: brightness(1.15); } }
+@media (prefers-reduced-motion: reduce) { .au-final { animation: none; } }

@@ -89,6 +89,9 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
   return panel;
 }
 
+/** The final stretch of an auction gets the big red timer (2 minutes, TJ 2026-10-14). */
+const FINAL_MS = 2 * 60 * 1000;
+
 /** "Thu, Oct 15, 11:42 AM": the full end date, so a week-long auction never reads as today. */
 function endText(date) {
   return date.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -127,13 +130,25 @@ export async function auctionPanel(listing) {
         a.reserve_met === false ? " · Reserve not met" : a.reserve_met === true && bids ? " · Reserve met" : ""));
     const clock = el("span", { class: "au-left" });
     const time = el("p", { class: "au-time" }, live ? [clock, el("span", { class: "au-ends" }, ` · Ends ${endText(ends)}`)]
+      : a.auction_state === "live" ? "Time's up. Closing the auction, the winner shows here in about a minute."
       : a.auction_state ? "This auction has ended." : "This auction hasn't started yet.");
-    panel.replaceChildren(head, time);
+    // The final 2 minutes (like eBay): a red banner with a big mm:ss timer, and the bids re-checked every 5 seconds.
+    const finalClock = el("span", { class: "au-final-clock", role: "timer", "aria-live": "off" });
+    const final = el("div", { class: "au-final", hidden: true }, el("span", { class: "au-final-label" }, "Ending soon · bid now"), finalClock);
+    panel.replaceChildren(head, final, time);
     if (live) {
+      let lastFastCheck = Date.now();
       const tick = () => {
+        const ms = ends - Date.now();
         clock.textContent = countdown(ends);
-        clock.classList.toggle("soon", ends - Date.now() < 3600000);
-        if (ends <= new Date()) { clearInterval(timer); setTimeout(() => draw(), 4000); }
+        clock.classList.toggle("soon", ms < 3600000);
+        final.hidden = !(ms > 0 && ms <= FINAL_MS);
+        if (!final.hidden) {
+          const secs = Math.ceil(ms / 1000);
+          finalClock.textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+          if (Date.now() - lastFastCheck >= 5000 && !panel.contains(document.activeElement)) { lastFastCheck = Date.now(); clearInterval(timer); draw(); return; }
+        }
+        if (ms <= 0) { clearInterval(timer); setTimeout(() => draw(), 4000); }
       };
       tick();
       timer = setInterval(tick, 1000);
