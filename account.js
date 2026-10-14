@@ -126,14 +126,24 @@ const RECOVERY_BUCKET = "recovery-documents";
 const OPEN_RECOVERY = ["submitted", "call_scheduled", "call_done"];
 const when = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
+let startingOver = false;
+
 async function renderRecovery(user) {
   const status = document.getElementById("recovery-status");
   const form = document.getElementById("recovery-form");
   const { data: request } = await supabase.rpc("my_recovery_request");
-  const showStatus = request && (OPEN_RECOVERY.includes(request.status) || ["rejected", "blocked"].includes(request.status));
+  const showStatus = request && !startingOver && (OPEN_RECOVERY.includes(request.status) || ["rejected", "blocked"].includes(request.status));
   form.hidden = showStatus;
   status.hidden = !showStatus;
   if (showStatus) {
+    if (!OPEN_RECOVERY.includes(request.status)) {
+      const safeNote = String(request.note ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      status.innerHTML = `<p class="status bad">✕ ${request.status === "blocked" ? "Stopped" : "Not approved"}${safeNote ? `: ${safeNote}` : ""}</p>`
+        + `<button type="button" class="secondary" id="recovery-again">Start a new request</button>`
+        + `<p class="hint">Your documents were deleted. If you start again, you'll need to send them again.</p>`;
+      document.getElementById("recovery-again").addEventListener("click", () => { startingOver = true; renderRecovery(user); });
+      return;
+    }
     const step = (text, done) => `<li>${done ? "✓" : "○"} ${text}</li>`;
     const safe = (text) => String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     status.innerHTML = `<p><strong>Request for @${safe(request.username)}</strong>, sent ${when(request.created_at)}.</p><ul class="link-list">`
@@ -141,7 +151,6 @@ async function renderRecovery(user) {
       + step(request.call_at ? `Video call on WhatsApp: ${when(request.call_at)}` : "A moderator checks your documents and schedules a WhatsApp video call", request.status !== "submitted")
       + step("Video call: sign your name three times on blank paper while the moderator watches", request.status === "call_done")
       + step(`A Super Admin finishes, no earlier than ${when(request.ready_at)}`, false) + "</ul>"
-      + (request.note && !OPEN_RECOVERY.includes(request.status) ? `<p class="status bad">${safe(request.note)}</p>` : "")
       + (OPEN_RECOVERY.includes(request.status)
         ? `<p class="hint">Keep WhatsApp handy. When it's done, sign in the same way you did today and you'll be in your account.</p><button type="button" class="secondary" id="recovery-cancel">Cancel request</button>`
         : "");
@@ -187,6 +196,7 @@ async function renderRecovery(user) {
         documents: uploaded,
       });
       if (requestError) throw requestError;
+      startingOver = false;
       renderRecovery(user);
     } catch (problem) {
       if (uploaded.length) await supabase.storage.from(RECOVERY_BUCKET).remove(uploaded.map((d) => d.path));
