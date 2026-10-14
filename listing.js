@@ -133,7 +133,7 @@ function actions(listing) {
     }
     message.disabled = false;
     error.replaceChildren(/verif/i.test(problem.message)
-      ? el("span", {}, "Verify your identity to message sellers. ", el("a", { href: "account.html" }, "Verify now"), ".")
+      ? el("span", {}, "Verify your identity to message sellers. ", el("a", { href: "account.html#verify" }, "Verify now"), ".")
       : friendlyError(problem));
     error.hidden = false;
   });
@@ -146,6 +146,12 @@ function actions(listing) {
       if (panel) webBox.append(panel);
     });
   }
+  // My own listing: manage it from Profile → My Listings, like the app's owner actions (no "Message the seller").
+  import("./auth.js").then(async ({ currentUser }) => {
+    const user = await currentUser();
+    if (user?.id !== listing.seller_id) return;
+    message.replaceWith(el("a", { class: "button secondary", href: "account.html#listings" }, "Manage in My Listings"));
+  });
   return el("div", { class: "in-app" },
     onWeb ? webBox : el("a", { class: "button", href: appLink(listing.reference) }, `${verb} in the app`),
     message,

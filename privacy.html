@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -32,16 +32,25 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="site-header"><div class="inner">
   <a class="brand" href="index.html"><img src="logo-mark.png" alt="" width="44" height="44">Geerho</a>
+  <nav class="tab-bar" aria-label="Main">
+    <a href="index.html" data-tab="home"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></a>
+    <a href="browse.html" data-tab="search"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Search</span></a>
+    <a href="post.html" data-tab="post"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg><span>Post</span></a>
+    <a href="messages.html" data-tab="inbox"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><span>Inbox</span></a>
+    <a href="account.html" data-tab="profile"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg><span>Profile</span></a>
+  </nav>
+  <a class="bell" href="notifications.html" aria-label="Notifications"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></a>
   <details class="menu">
-    <summary aria-label="Menu"><span class="bars" aria-hidden="true"></span></summary>
-    <nav aria-label="Site">
-      <a href="browse.html">Browse</a>
-      <a href="live.html">Live</a>
-    <a href="about.html">About</a>
-    <a href="news.html">News</a>
-      <a href="account.html" data-account>Sign in</a>
-      <a href="contact.html">Contact</a>
-      <a href="download.html" class="nav-cta">Get the app</a>
+    <summary aria-label="More"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></summary>
+    <nav aria-label="More">
+        <a href="live.html">Live</a>
+        <a href="featured.html">Featured listings</a>
+        <a href="help.html">User Handbook</a>
+        <a href="faq.html">FAQs</a>
+        <a href="about.html">About</a>
+        <a href="news.html">News</a>
+        <a href="contact.html">Contact</a>
+        <a href="download.html" class="nav-cta">Get the app</a>
     </nav>
   </details>
 </div></header>
@@ -412,11 +421,5 @@
   </nav>
   <p class="copyright">© 2026 Geerho, LLC</p>
 </div></footer>
-<nav class="tab-bar" aria-label="App">
-  <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
-  <a href="browse.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Browse</span></a>
-  <a href="messages.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Messages</span></a>
-  <a href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Account</span></a>
-</nav>
 </body>
 </html>

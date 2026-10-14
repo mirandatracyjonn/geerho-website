@@ -363,7 +363,7 @@ async function renderSignInMethods() {
       error.hidden = true;
       const { error: linkError } = await supabase.auth.linkIdentity({
         provider,
-        options: { redirectTo: new URL("account.html", location.href).href, scopes: provider === "github" ? "read:user user:email" : undefined },
+        options: { redirectTo: new URL("account.html#settings", location.href).href, scopes: provider === "github" ? "read:user user:email" : undefined },
       });
       if (linkError) fail(linkProblem(linkError.message));
     });
@@ -434,7 +434,7 @@ async function render() {
   if (!user) {
     if (params.get("existing") === "1") {
       const error = document.getElementById("sign-in-error");
-      error.textContent = "Done. Now sign in the way you did before, then add your other sign-in under Account → Sign-in methods.";
+      error.textContent = "Done. Now sign in the way you did before, then add your other sign-in under Profile → Settings → Sign-in Methods.";
       error.className = "status good";
       error.hidden = false;
     }
@@ -460,7 +460,6 @@ async function render() {
   }
   if (next) return location.replace(next);
 
-  document.getElementById("greeting").textContent = `Hi, @${profile.username}`;
   document.getElementById("signed-in-as").textContent = `Signed in as ${user.email ?? "a Geerho member"}.`;
   if (params.get("verification") === "done") {
     const notice = document.getElementById("notice");
@@ -468,6 +467,9 @@ async function render() {
     notice.hidden = false;
   }
   show("signedIn");
+  // The Profile tab and its screens, laid out like the iPhone app (profile.js).
+  const { startProfile } = await import("./profile.js");
+  startProfile(user, profile, render);
   await renderRecoveryAlert();
   await renderUsernameChange(user, profile);
   await renderVerification(profile);

@@ -84,3 +84,47 @@ try {
   // The search still works without the category list.
 }
 load(true);
+
+// Listings | People, like the app's Search tab. People search needs a signed-in member (same rule as the app).
+const scopeBar = document.getElementById("scope");
+const peopleForm = document.getElementById("people-form");
+const peopleList = document.getElementById("people");
+const featuredStrip = document.getElementById("featured-strip");
+const listingParts = [form, status, results, more.parentElement];
+let featuredShown = false;
+
+function setScope(scope) {
+  const people = scope === "people";
+  for (const b of scopeBar.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.scope === scope));
+  if (people) featuredShown = !featuredStrip.hidden;
+  for (const part of listingParts) part.hidden = people;
+  featuredStrip.hidden = people || !featuredShown;
+  peopleForm.hidden = !people;
+  peopleList.hidden = !people;
+  if (people) document.getElementById("pq").focus();
+}
+scopeBar.addEventListener("click", (event) => { const b = event.target.closest("button"); if (b) setScope(b.dataset.scope); });
+
+let peopleTimer = null;
+peopleForm.addEventListener("submit", (event) => event.preventDefault());
+document.getElementById("pq").addEventListener("input", (event) => {
+  clearTimeout(peopleTimer);
+  peopleTimer = setTimeout(() => searchPeople(event.target.value.trim()), 250);
+});
+
+async function searchPeople(text) {
+  const { el } = await import("./site.js");
+  const { currentUser, signInURL, supabase } = await import("./auth.js");
+  if (!(await currentUser())) {
+    peopleList.replaceChildren(el("li", { class: "cell-pad" }, el("a", { href: signInURL("browse.html") }, "Sign in"), " to search for people."));
+    return;
+  }
+  if (text.replace(/^@/, "").length < 2) { peopleList.replaceChildren(); return; }
+  const { avatar } = await import("./profile.js");
+  const { icon } = await import("./icons.js");
+  const { data } = await supabase.rpc("search_members", { search_text: text, max_rows: 30 });
+  peopleList.replaceChildren(...((data ?? []).length ? data.map((p) => el("li", {}, el("a", { class: "item-row", href: `member.html?id=${p.id}` },
+    avatar(p.avatar_url, p.display_name || p.username, 44),
+    el("span", { class: "row-title" }, el("strong", {}, p.display_name || `@${p.username}`), el("small", {}, `@${p.username}`)),
+    icon("chevronRight", "chev")))) : [el("li", { class: "cell-pad" }, "No members match.")]));
+}

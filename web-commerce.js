@@ -22,7 +22,7 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
   if (open?.length) {
     const until = new Date(open[0].respond_by).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
     panel.append(el("p", { class: "status good" }, `You asked to buy this. The seller has until ${until} to accept.`),
-      el("a", { class: "button secondary", href: "purchases.html" }, "See my purchases"));
+      el("a", { class: "button secondary", href: "account.html#purchases" }, "See My Purchases"));
     return panel;
   }
   if (!auctionWin) {
@@ -70,7 +70,7 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
     if (problem) {
       button.disabled = false;
       error.replaceChildren(/verif/i.test(problem.message)
-        ? el("span", {}, "Verify your identity to buy. ", el("a", { href: "account.html" }, "Verify now"), ".")
+        ? el("span", {}, "Verify your identity to buy. ", el("a", { href: "account.html#verify" }, "Verify now"), ".")
         : friendlyError(problem));
       error.hidden = false;
       return;
@@ -83,7 +83,7 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
     form.replaceWith(el("div", {}, el("p", { class: "status good" }, cards
       ? "Your request is in. Finish paying from My purchases."
       : "Your request is in. This seller doesn't take card payments yet: agree on payment in Messages, and never pay outside Geerho with gift cards, wire transfers, or crypto."),
-      el("a", { class: "button secondary", href: "purchases.html" }, "See my purchases")));
+      el("a", { class: "button secondary", href: "account.html#purchases" }, "See My Purchases")));
   });
   panel.append(form);
   return panel;
@@ -155,7 +155,10 @@ export async function auctionPanel(listing) {
     }
 
     if (a.i_won && a.needs_checkout) {
-      panel.append(el("p", { class: "status good" }, "You won! Complete your purchase."), await buyPanel(listing, { auctionWin: true }));
+      const checkout = await buyPanel(listing, { auctionWin: true });
+      panel.append(...[el("p", { class: "status good" }, "You won! Complete your purchase."), checkout].filter(Boolean));
+      // Opened from Profile → My Bids → Complete Purchase.
+      if (location.hash === "#complete") requestAnimationFrame(() => panel.scrollIntoView({ behavior: "smooth", block: "start" }));
       return;
     }
     if (!live) return;

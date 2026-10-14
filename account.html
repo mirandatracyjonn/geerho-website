@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://zdumomkbwgognuehsgtq.supabase.co https://*.googleusercontent.com https://avatars.githubusercontent.com; connect-src 'self' https://zdumomkbwgognuehsgtq.supabase.co wss://zdumomkbwgognuehsgtq.supabase.co; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="format-detection" content="telephone=no, address=no, email=no, date=no">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Your Geerho account</title>
+  <title>Profile · Geerho</title>
   <meta name="description" content="Sign in to Geerho, verify your identity, and manage your account.">
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/png" href="favicon.png">
@@ -22,7 +22,7 @@
   <script type="module" src="auth.js"></script>
   <script type="module" src="account.js"></script>
   <meta property="og:site_name" content="Geerho">
-  <meta property="og:title" content="Your Geerho account">
+  <meta property="og:title" content="Profile · Geerho">
   <meta property="og:description" content="Sign in to Geerho, verify your identity, and manage your account.">
   <meta property="og:image" content="https://geerho.com/og-beta.png">
   <meta property="og:image:width" content="1200">
@@ -30,20 +30,29 @@
   <meta property="og:image:alt" content="Geerho public beta now open: buy and sell, jobs, real estate, and rentals. Join on TestFlight at geerho.com.">
   <meta name="twitter:card" content="summary_large_image">
 </head>
-<body>
+<body class="grouped-page">
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="site-header"><div class="inner">
   <a class="brand" href="index.html"><img src="logo-mark.png" alt="" width="44" height="44">Geerho</a>
+  <nav class="tab-bar" aria-label="Main">
+    <a href="index.html" data-tab="home"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></a>
+    <a href="browse.html" data-tab="search"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Search</span></a>
+    <a href="post.html" data-tab="post"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg><span>Post</span></a>
+    <a href="messages.html" data-tab="inbox"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><span>Inbox</span></a>
+    <a href="account.html" data-tab="profile" aria-current="page"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg><span>Profile</span></a>
+  </nav>
+  <a class="bell" href="notifications.html" aria-label="Notifications"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></a>
   <details class="menu">
-    <summary aria-label="Menu"><span class="bars" aria-hidden="true"></span></summary>
-    <nav aria-label="Site">
-      <a href="browse.html">Browse</a>
-      <a href="live.html">Live</a>
-    <a href="about.html">About</a>
-    <a href="news.html">News</a>
-      <a href="account.html" aria-current="page" data-account>Sign in</a>
-      <a href="contact.html">Contact</a>
-      <a href="download.html" class="nav-cta">Get the app</a>
+    <summary aria-label="More"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></summary>
+    <nav aria-label="More">
+        <a href="live.html">Live</a>
+        <a href="featured.html">Featured listings</a>
+        <a href="help.html">User Handbook</a>
+        <a href="faq.html">FAQs</a>
+        <a href="about.html">About</a>
+        <a href="news.html">News</a>
+        <a href="contact.html">Contact</a>
+        <a href="download.html" class="nav-cta">Get the app</a>
     </nav>
   </details>
 </div></header>
@@ -51,15 +60,15 @@
   <p class="status-line" id="status" role="status">Loading…</p>
 
   <section id="signed-out" hidden>
-    <h1>Sign in to Geerho</h1>
-    <p class="lead">Use the same account as the Geerho app. Sign in to message sellers, contact support, and verify your identity.</p>
+    <h1 class="large-title">Join Geerho</h1>
+    <p class="lead">Save favorites, list items, and message sellers. Use the same account as the Geerho app.</p>
     <div class="sign-in-buttons">
       <button type="button" class="provider apple" data-provider="apple" hidden>Continue with Apple</button>
       <button type="button" class="provider" data-provider="google">Continue with Google</button>
       <button type="button" class="provider" data-provider="github">Continue with GitHub</button>
     </div>
     <p class="status bad" id="sign-in-error" role="alert" hidden></p>
-    <p class="hint"><strong>Already have a Geerho account?</strong> Sign in the same way you did before. Each person can have one account. Using Apple for the first time? Choose <strong>“Share My Email”</strong> so we can match it to your account; with “Hide My Email,” sign in your usual way first and add Apple under Account → Sign-in methods.</p>
+    <p class="hint"><strong>Already have a Geerho account?</strong> Sign in the same way you did before. Each person can have one account. Using Apple for the first time? Choose <strong>“Share My Email”</strong> so we can match it to your account; with “Hide My Email,” sign in your usual way first and add Apple under Profile → Settings → Sign-in Methods.</p>
     <p class="hint">By continuing, you agree to our <a href="terms.html">Terms of Service</a> and acknowledge our <a href="privacy.html">Privacy Policy</a>. We keep you signed in on this browser until you sign out.</p>
   </section>
 
@@ -77,7 +86,7 @@
 
     <div class="panel existing-account">
       <h2>Used Geerho before?</h2>
-      <p>Each person can have one Geerho account. If you already signed up another way (for example with Google), don't make a second one: remove this new, empty account, sign in the way you did before, then add this sign-in under <strong>Account → Sign-in methods</strong>.</p>
+      <p>Each person can have one Geerho account. If you already signed up another way (for example with Google), don't make a second one: remove this new, empty account, sign in the way you did before, then add this sign-in under <strong>Profile → Settings → Sign-in Methods</strong>.</p>
       <p class="hint" id="hidden-email-note" hidden>You chose Apple's “Hide My Email,” so we couldn't match this Apple ID to your other account automatically.</p>
       <button type="button" class="secondary" id="existing-account">I already have a Geerho account</button>
       <p class="status bad" id="existing-error" role="alert" hidden></p>
@@ -107,65 +116,91 @@
   </section>
 
   <section id="signed-in" hidden>
-    <h1 id="greeting">Your account</h1>
-    <p class="meta" id="signed-in-as"></p>
     <p class="status good" id="notice" role="status" hidden></p>
-
     <div class="panel" id="recovery-alert" hidden></div>
 
-    <h2>Username</h2>
-    <div class="panel" id="username-panel">
-      <form id="change-username-form" novalidate>
-        <div>
-          <label for="new-username">Username <span class="hint">2–30 letters, numbers, or underscores</span></label>
-          <input type="text" id="new-username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="31" aria-describedby="new-username-error new-username-hint">
-          <span class="field-error" id="new-username-error" hidden></span>
-        </div>
-        <button type="submit">Change username</button>
+    <!-- Profile: built by profile.js, like the app's Profile tab. -->
+    <div id="profile-hub"></div>
+    <!-- A row's screen (My Bids, Purchases, …): built by profile-screens.js. -->
+    <div id="profile-screen" hidden></div>
+
+    <!-- Edit Profile -->
+    <div id="edit-screen" hidden>
+      <div class="screen-head"><a class="back" href="#">‹ Profile</a><h1>Edit Profile</h1></div>
+      <ul class="group plain"><li class="cell-pad" id="photo-cell"></li></ul>
+      <p class="group-title">Username</p>
+      <ul class="group plain"><li class="cell-pad">
+        <form id="change-username-form" novalidate>
+          <div>
+            <label for="new-username" class="sr-only">Username</label>
+            <input type="text" id="new-username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="31" aria-describedby="new-username-error new-username-hint">
+            <span class="field-error" id="new-username-error" hidden></span>
+          </div>
+          <button type="submit">Change Username</button>
+        </form>
+      </li></ul>
+      <p class="group-footer" id="new-username-hint"></p>
+      <form id="profile-form" novalidate>
+        <p class="group-title">Name</p>
+        <ul class="group plain"><li class="cell-pad"><label for="pf-name" class="sr-only">Display name</label><input type="text" id="pf-name" maxlength="60" placeholder="Display name" autocomplete="name"></li></ul>
+        <p class="group-title">Bio</p>
+        <ul class="group plain"><li class="cell-pad"><label for="pf-bio" class="sr-only">Bio</label><textarea id="pf-bio" maxlength="300" placeholder="Tell people a bit about yourself"></textarea><p class="hint" id="pf-bio-count"></p></li></ul>
+        <p class="group-title">City</p>
+        <ul class="group plain"><li class="cell-pad"><label for="pf-city" class="sr-only">City</label><input type="text" id="pf-city" maxlength="80" placeholder="City" autocomplete="address-level2"></li></ul>
+        <button type="submit">Save</button>
+        <p class="status" id="pf-status" role="status"></p>
       </form>
-      <p class="hint" id="new-username-hint"></p>
     </div>
 
-    <h2>Identity verification</h2>
-    <div class="panel" id="verification"></div>
-
-    <h2>Your activity</h2>
-    <ul class="link-list">
-      <li><a href="messages.html">Messages</a></li>
-      <li><a href="purchases.html">My purchases</a></li>
-      <li><a href="featured.html">Feature a listing</a></li>
-      <li><a href="contact.html">Contact Geerho Support</a></li>
-      <li><a href="browse.html">Browse listings</a></li>
-    </ul>
-    <p class="hint">You can buy and bid on items right here. Selling, renting, homes, and services are coming to the website soon; for now, use the <a href="download.html">Geerho app</a> for those.</p>
-
-    <h2>Sign-in methods</h2>
-    <div class="panel" id="sign-in-methods">
-      <p>Sign in with any of these and you'll get this same account. Each person can have one Geerho account.</p>
-      <ul class="link-list" id="linked-methods"></ul>
-      <div class="actions" id="link-buttons"></div>
-      <p class="status bad" id="link-error" role="alert" hidden></p>
+    <!-- Settings (the gear), with the app's sections: Account, Safety, Help, Legal. -->
+    <div id="settings-screen" hidden>
+      <div class="screen-head"><a class="back" href="#">‹ Profile</a><h1>Settings</h1></div>
+      <p class="group-title">Account</p>
+      <ul class="group plain">
+        <li class="cell-pad"><p class="meta" id="signed-in-as"></p></li>
+        <li class="cell-pad" id="sign-in-methods">
+          <strong>Sign-in Methods</strong>
+          <p class="hint">Sign in with any of these and you'll get this same account. Each person can have one Geerho account.</p>
+          <ul class="link-list" id="linked-methods"></ul>
+          <div class="actions" id="link-buttons"></div>
+          <p class="status bad" id="link-error" role="alert" hidden></p>
+        </li>
+      </ul>
+      <p class="group-title">Safety</p>
+      <ul class="group plain">
+        <li class="cell-pad"><strong>Identity Verification</strong><div id="verification"></div></li>
+        <li><a class="row" href="#blocked"><span class="row-title">Blocked Users</span></a></li>
+      </ul>
+      <p class="group-title">Help</p>
+      <ul class="group plain">
+        <li><a class="row" href="help.html"><span class="row-title">User Handbook</span></a></li>
+        <li><a class="row" href="faq.html"><span class="row-title">FAQ</span></a></li>
+        <li><a class="row" href="community-guidelines.html"><span class="row-title">Safety Tips</span></a></li>
+        <li><a class="row" href="contact.html"><span class="row-title">Contact Support</span></a></li>
+      </ul>
+      <p class="group-title">Legal</p>
+      <ul class="group plain">
+        <li><a class="row" href="terms.html"><span class="row-title">Terms of Service</span></a></li>
+        <li><a class="row" href="privacy.html"><span class="row-title">Privacy Policy</span></a></li>
+        <li><a class="row" href="community-guidelines.html"><span class="row-title">Community Guidelines</span></a></li>
+        <li><a class="row" href="law-enforcement.html"><span class="row-title">Law Enforcement Guidelines</span></a></li>
+      </ul>
+      <ul class="group plain"><li><button type="button" class="row danger" id="sign-out">Sign Out</button></li></ul>
+      <ul class="group plain"><li class="cell-pad">
+        <details class="danger">
+          <summary>Delete Account</summary>
+          <p>Permanently deletes your Geerho account, profile, photos, and listings, on the website and in the app. This can't be undone.</p>
+          <form id="delete-form" novalidate>
+            <div>
+              <label for="delete-confirm">Type DELETE to confirm</label>
+              <input type="text" id="delete-confirm" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            </div>
+            <button type="submit" class="danger-button">Delete Account</button>
+            <p class="status bad" id="delete-error" role="alert" hidden></p>
+          </form>
+        </details>
+      </li></ul>
     </div>
-
-    <h2>Home address</h2>
-    <p>Your home address is private: it's never on your profile, and it fills in checkout for you. If your ID shows your address, we add it when you verify. To add or change it, use the <a href="download.html">Geerho app</a> (Profile → Home Address).</p>
-
-    <h2>Sign out</h2>
-    <p><button type="button" class="secondary" id="sign-out">Sign out of this browser</button></p>
-
-    <h2>Delete your account</h2>
-    <details class="danger">
-      <summary>Delete my Geerho account</summary>
-      <p>This permanently deletes your account, listings, messages, and photos, on the website and in the app. It can't be undone.</p>
-      <form id="delete-form" novalidate>
-        <div>
-          <label for="delete-confirm">Type DELETE to confirm</label>
-          <input type="text" id="delete-confirm" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        </div>
-        <button type="submit" class="danger-button">Delete my account</button>
-        <p class="status bad" id="delete-error" role="alert" hidden></p>
-      </form>
-    </details>
   </section>
 </main>
 <footer class="site-footer"><div class="inner">
@@ -182,11 +217,5 @@
   </nav>
   <p class="copyright">© 2026 Geerho, LLC</p>
 </div></footer>
-<nav class="tab-bar" aria-label="App">
-  <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><span>Home</span></a>
-  <a href="browse.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span>Browse</span></a>
-  <a href="messages.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Messages</span></a>
-  <a href="account.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Account</span></a>
-</nav>
 </body>
 </html>

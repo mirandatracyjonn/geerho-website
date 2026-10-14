@@ -114,6 +114,8 @@ export function el(tag, attributes = {}, ...children) {
   for (const [key, value] of Object.entries(attributes)) {
     if (value === null || value === undefined || value === false) continue;
     if (key === "class") node.className = value;
+    // Through the style API: the site's Content Security Policy blocks inline style attributes, not this.
+    else if (key === "style") node.style.cssText = value;
     else node.setAttribute(key, value === true ? "" : value);
   }
   for (const child of children.flat()) {

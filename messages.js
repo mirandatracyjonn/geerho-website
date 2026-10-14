@@ -46,8 +46,20 @@ async function loadConversations() {
       ),
     );
   }));
+  // Geerho Support threads first, like the app's Inbox.
+  const { data: tickets } = await supabase.rpc("support_tickets_list", { staff_view: false, only_status: null });
+  const open = (tickets ?? []).filter((t) => !t.deleted_at);
+  if (open.length) {
+    list.prepend(el("li", { class: "inbox-section" }, "Geerho Support"),
+      ...open.map((t) => el("li", {}, el("a", { href: `contact.html?t=${t.id}`, class: t.unread ? "unread" : null },
+        el("span", { class: "thumb-empty support-mark" }, el("img", { src: "logo-mark.png", alt: "" })),
+        el("span", { class: "conversation-text" }, el("strong", {}, "Geerho Support"),
+          el("span", { class: "card-meta" }, [t.reference, t.subject_title].filter(Boolean).join(" · ")),
+          t.last_message ? el("span", { class: "preview" }, `${t.unread ? "New reply · " : ""}${t.last_message}`) : null)))),
+      el("li", { class: "inbox-section" }, "Messages"));
+  }
   if (!conversations.length) {
-    list.replaceChildren(el("li", { class: "status-line" }, "No conversations yet. Open a listing and choose “Message the seller.”"));
+    list.append(el("li", { class: "status-line" }, "No messages yet. When you message a seller, or someone messages you about your listing, it shows up here."));
   }
 }
 
@@ -125,7 +137,7 @@ function composer() {
     button.disabled = false;
     if (problem) {
       error.textContent = /verif/i.test(problem.message)
-        ? "Verify your identity to send messages. Go to your Account page to start."
+        ? "Verify your identity to send messages. Go to Profile → Settings → Identity Verification to start."
         : friendlyError(problem);
       error.hidden = false;
       return;
