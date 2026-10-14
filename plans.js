@@ -29,6 +29,15 @@ for (const button of document.querySelectorAll("[data-subscribe]")) {
 }
 document.getElementById("manage").addEventListener("click", () => go("manage_plan"));
 
+// Founding Members (M75): their discount is applied automatically at checkout.
+const { data: founder } = await supabase.rpc("founder_pricing");
+if (founder?.me_founder) {
+  const note = document.createElement("p");
+  note.className = "status good";
+  note.textContent = `Founding Member #${founder.my_number}: ${founder.first_year_pct}% off any plan for your first year, then ${founder.after_pct}%. It's applied at checkout.`;
+  status.before(note);
+}
+
 // Signed in: show the current plan.
 const user = await currentUser();
 if (user) {

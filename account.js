@@ -305,7 +305,7 @@ async function renderVerification(profile) {
   try {
     const { data: spots } = await supabase.rpc("founding_spots_left");
     if (typeof spots === "number" && spots > 0) {
-      panel.append(el("p", { class: "hint" }, `Founding Sellers: ${spots} of 300 spots left for the first members to verify.`));
+      panel.append(el("p", { class: "hint" }, `Verification is free. Founding Members: ${spots} of 300 spots left for the first members to verify (no commission, and 25% off plans the first year, then 10%).`));
     }
   } catch {
     // Optional.
