@@ -1,6 +1,5 @@
 // The Post tab on geerho.com, the same chooser as the app's (SellTabView): Buy and sell · Real estate · Freelance.
-// Posting from the website comes next (website parity phase 3); until then each choice explains how to post it in the
-// app and opens the download page, so the website and the apps look and read the same.
+// Each choice opens the same form as the app (post-form.js); post.html?edit=<id> edits one of my listings.
 import { el } from "./site.js";
 import { currentUser, signInURL } from "./auth.js";
 import { icon, rowIcon } from "./icons.js";
@@ -32,18 +31,13 @@ async function render() {
         el("a", { class: "button", href: signInURL("post.html") }, "Sign In")));
     return;
   }
-  const chosen = new URLSearchParams(location.search).get("type");
-  const pick = CHOICES.flatMap(([, list]) => list).find(([key]) => key === chosen);
-  if (pick) {
-    const [, title, subtitle, iconName, tint] = pick;
-    main.replaceChildren(
-      el("div", { class: "screen-head" }, el("a", { class: "back", href: "post.html" }, icon("chevronLeft"), "Post"), el("h1", {}, title)),
-      el("ul", { class: "group plain" }, el("li", { class: "cell-pad" },
-        el("div", { class: "item-row", style: "padding:0" }, rowIcon(iconName, tint), el("span", { class: "row-title" }, el("strong", {}, title), el("small", {}, subtitle))),
-        el("p", {}, "Posting from geerho.com is coming soon. For now, post it in the Geerho app: tap ", el("strong", {}, "Post"), ", then ", el("strong", {}, title), ". It shows here on the website the moment it's live."),
-        el("p", { class: "actions" }, el("a", { class: "button", href: "download.html" }, "Get the App"), el("a", { class: "button secondary", href: "account.html#listings" }, "My Listings")))),
-      el("p", { class: "group-footer" }, "Everyone who posts on Geerho verifies their identity first."));
-    document.title = `${title} · Geerho`;
+  const params = new URLSearchParams(location.search);
+  const chosen = params.get("type"), editId = params.get("edit");
+  if (chosen || editId) {
+    const { postForm, TYPES } = await import("./post-form.js");
+    if (TYPES[chosen]) document.title = `${TYPES[chosen].title} · Geerho`;
+    if (editId) document.title = "Edit Listing · Geerho";
+    await postForm(main, chosen, { editId, me: user });
     return;
   }
   main.replaceChildren(

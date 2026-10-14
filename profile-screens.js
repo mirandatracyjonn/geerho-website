@@ -336,6 +336,7 @@ async function listings(ctx) {
     return el("div", { class: "item" },
       itemRow(`listing.html?id=${l.id}`, cover(l.listing_photos), l.title, price, state, tone),
       actionsBar(
+        ["draft", "active"].includes(l.status) ? el("a", { class: "button secondary", href: `post.html?edit=${l.id}` }, "Edit") : null,
         l.status === "draft" ? button("Publish", confirmThen(ctx, "Publish this listing?", "People nearby can see it for 60 days.", "Publish", update({ status: "active" }))) : null,
         l.status === "sold" ? button("Mark as Available", confirmThen(ctx, "Mark as available?", "It shows on Geerho again.", "Yes", update({ status: "active" }))) : null,
         expired ? button("Renew for 60 Days", confirmThen(ctx, "Renew for 60 days?", "It shows on Geerho again for 60 days.", "Renew", () => supabase.rpc("renew_listing", { listing_id: l.id }))) : null,
@@ -349,7 +350,7 @@ async function listings(ctx) {
   return [
     segmented([["active", `Active (${count((l) => !["sold", "draft"].includes(l.status))})`], ["sold", `Sold (${count((l) => l.status === "sold")})`],
       ["drafts", `Drafts (${count((l) => l.status === "draft")})`]], tab, (v) => { ctx.state.listingsTab = v; ctx.reload(); }),
-    rows.length ? group(rows, null, "To edit a listing's photos and details, use Edit on the listing in the Geerho app.")
+    rows.length ? group(rows)
       : empty("tag", tab === "drafts" ? "No drafts" : tab === "sold" ? "Nothing sold yet" : "No listings yet", "Tap Post to sell, rent out, or offer something."),
   ];
 }

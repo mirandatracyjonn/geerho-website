@@ -892,3 +892,49 @@ svg.chev { width: 16px; height: 16px; flex: none; color: var(--muted); opacity: 
 .item-row .row-title { min-width: 0; }
 .stack-actions { display: grid; gap: 10px; margin: 0 0 18px; }
 .stack-actions button { width: 100%; }
+
+/* ===== Post form (like the app's Form sections) ===== */
+.form-group { padding: 4px 0; }
+.form-row { display: grid; gap: 6px; padding: 10px 16px; }
+.form-group > .form-row + .form-row, .form-group > * + .form-row { border-top: 1px solid var(--sep); }
+.form-label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.form-row-label { padding: 10px 16px 0; border-top: 1px solid var(--sep); }
+.form-row-label + .form-row { border-top: 0 !important; padding-top: 4px; }
+.form-hint { color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+.form-row input[type="text"], .form-row select, .form-row textarea { width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.money-input { display: flex; align-items: center; gap: 6px; border: 1px solid var(--rule); border-radius: 10px; padding: 0 12px; background: var(--field); }
+.money-input span { color: var(--muted); font-weight: 600; }
+.money-input input { border: 0 !important; padding: 10px 0 !important; background: transparent !important; outline: none; flex: 1; min-width: 0; font: inherit; color: var(--text); }
+.money-input:focus-within { border-color: var(--accent); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; cursor: pointer; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span { display: inline-block; padding: 7px 14px; border-radius: 999px; border: 1.5px solid var(--rule); font-weight: 600; font-size: 0.92rem; background: var(--field); }
+.chip input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+.check-row { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check-row input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--accent); flex: none; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--sep); }
+.two-col .form-row + .form-row { border-top: 0; }
+.nested { display: grid; gap: 8px; padding: 0 16px 12px; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.photo-tile, .photo-add { position: relative; aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; background: var(--surface); }
+.photo-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-add { display: grid; place-content: center; justify-items: center; gap: 4px; color: var(--link); border: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent); cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+.photo-add .icon { width: 28px; height: 28px; }
+.photo-remove { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; min-height: 0; padding: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; display: grid; place-items: center; border: 0; }
+.photo-remove .icon { width: 14px; height: 14px; }
+.photo-cover { position: absolute; left: 4px; bottom: 4px; min-height: 0; padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 0.72rem; font-weight: 700; border: 0; }
+.description-editor { display: grid; gap: 8px; }
+.tool-row { display: flex; gap: 6px; }
+.tool-button { min-height: 34px; padding: 4px 12px; border-radius: 8px; font-size: 0.9rem; }
+.area-label { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
+.area-label .icon { width: 18px; height: 18px; color: var(--link); }
+.area-actions, .area-search { display: flex; gap: 8px; }
+.area-search input { flex: 1; }
+.post-primary { width: 100%; min-height: 52px; border-radius: 999px; font-size: 1.05rem; font-weight: 700; margin-top: 8px; }
+.post-secondary { width: 100%; margin-top: 10px; border-radius: 999px; }
+.published .row-icon { width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 10px; }
+.published .row-icon .icon { width: 30px; height: 30px; }
+#post .status.bad, #post .status.good { white-space: pre-line; margin: 14px 0 0; }
+#post .post-secondary + .group-footer { margin-top: 12px; }
