@@ -18,12 +18,12 @@ function show(name) {
   for (const [key, section] of Object.entries(sections)) section.hidden = key !== name;
 }
 
-// Must match the database's username rules (supabase/migrations/*_m1_marketplace_foundation.sql).
+// Must match the database's username rules (m1 + m60: 2–30 characters since 2026-10-13).
 const RESERVED = new Set(["admin", "administrator", "geerho", "help", "moderator", "mod", "official",
   "root", "security", "staff", "support", "system", "team", "xenpen"]);
 
 function usernameProblem(name) {
-  if (name.length < 3) return "Use at least 3 characters.";
+  if (name.length < 2) return "Use at least 2 characters.";
   if (name.length > 30) return "Use 30 characters or fewer.";
   if (!/^[a-z0-9_]+$/.test(name)) return "Use only letters, numbers, and underscores.";
   if (RESERVED.has(name)) return "That username is reserved.";
@@ -69,10 +69,53 @@ function setupUsername(user) {
     const { error: saveError } = await supabase.from("profiles").update({ username: name }).eq("id", user.id);
     button.disabled = false;
     if (saveError) {
-      return fail(saveError.code === "23505" ? "That username is taken. Try another." : friendlyError(saveError));
+      return fail(usernameError(saveError));
     }
     if (next) location.replace(next);
     else render();
+  });
+}
+
+function usernameError(saveError) {
+  if (saveError.code === "23505") {
+    return /recently used/.test(saveError.message ?? "") ? saveError.message : "That username is taken. Try another.";
+  }
+  return friendlyError(saveError);
+}
+
+// Changing your username (M60): once every N days; your old one is held for you for N days.
+async function renderUsernameChange(user, profile) {
+  const form = document.getElementById("change-username-form");
+  const input = document.getElementById("new-username");
+  const error = document.getElementById("new-username-error");
+  const hint = document.getElementById("new-username-hint");
+  input.value = profile.username;
+  const { data: status } = await supabase.rpc("my_username_status");
+  const days = status?.change_days ?? 30;
+  const nextAt = status?.next_change_at ? new Date(status.next_change_at) : null;
+  const waiting = nextAt && nextAt > new Date();
+  input.disabled = waiting;
+  form.querySelector("button").disabled = waiting;
+  hint.textContent = waiting
+    ? `You can change your username again on ${nextAt.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.`
+    : `You can change your username once every ${days} days. Your old one is held for you for ${days} days.`;
+  if (form.dataset.wired) return;
+  form.dataset.wired = "1";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    input.removeAttribute("aria-invalid");
+    const fail = (message) => { error.textContent = message; error.hidden = false; input.setAttribute("aria-invalid", "true"); input.focus(); };
+    const name = input.value.trim().toLowerCase().replace(/^@/, "");
+    if (name === profile.username) return fail("This is your current username.");
+    const problem = usernameProblem(name);
+    if (problem) return fail(problem);
+    const button = form.querySelector("button");
+    button.disabled = true;
+    const { error: saveError } = await supabase.from("profiles").update({ username: name }).eq("id", user.id);
+    button.disabled = false;
+    if (saveError) return fail(usernameError(saveError));
+    render();
   });
 }
 
@@ -320,6 +363,7 @@ async function render() {
     notice.hidden = false;
   }
   show("signedIn");
+  await renderUsernameChange(user, profile);
   await renderVerification(profile);
   await renderSignInMethods();
 }

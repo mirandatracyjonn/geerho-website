@@ -67,7 +67,7 @@
     <p class="lead">It's how other people find and recognize you on Geerho, on the web and in the app.</p>
     <form id="username-form" novalidate>
       <div>
-        <label for="username">Username <span class="hint">3–30 letters, numbers, or underscores</span></label>
+        <label for="username">Username <span class="hint">2–30 letters, numbers, or underscores</span></label>
         <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="31" required aria-describedby="username-error">
         <span class="field-error" id="username-error" hidden></span>
       </div>
@@ -87,6 +87,19 @@
     <h1 id="greeting">Your account</h1>
     <p class="meta" id="signed-in-as"></p>
     <p class="status good" id="notice" role="status" hidden></p>
+
+    <h2>Username</h2>
+    <div class="panel" id="username-panel">
+      <form id="change-username-form" novalidate>
+        <div>
+          <label for="new-username">Username <span class="hint">2–30 letters, numbers, or underscores</span></label>
+          <input type="text" id="new-username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="31" aria-describedby="new-username-error new-username-hint">
+          <span class="field-error" id="new-username-error" hidden></span>
+        </div>
+        <button type="submit">Change username</button>
+      </form>
+      <p class="hint" id="new-username-hint"></p>
+    </div>
 
     <h2>Identity verification</h2>
     <div class="panel" id="verification"></div>
