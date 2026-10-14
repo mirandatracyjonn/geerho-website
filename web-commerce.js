@@ -36,7 +36,7 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
   const shipping = listing.offers_shipping, pickup = listing.offers_pickup;
   let delivery = shipping && !pickup ? "shipping" : "pickup";
   const form = el("form", { class: "web-buy-form", novalidate: true });
-  const choice = el("fieldset", {}, el("legend", {}, "How you'll get it"),
+  const choice = el("fieldset", { class: "choice-cards" }, el("legend", {}, "How you'll get it"),
     ...[["pickup", "Local pickup", pickup], ["shipping", `Shipping${listing.shipping_fee_cents ? ` (${money(listing.shipping_fee_cents, listing.currency)})` : listing.shipping_fee_cents === 0 ? " (free)" : ""}`, shipping]]
       .filter(([, , ok]) => ok)
       .map(([value, label]) => el("label", {}, el("input", { type: "radio", name: "delivery", value, checked: value === delivery }), " ", label)));
@@ -44,7 +44,7 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
     el("div", {}, el("label", { for: `ship-${name}` }, label), el("input", { id: `ship-${name}`, name, value, required, autocomplete: name === "postal_code" ? "postal-code" : "on" }));
   const { data: home } = await supabase.rpc("my_home_address");
   const a = home?.address ?? {};
-  const address = el("div", { class: "web-ship", hidden: delivery !== "shipping" },
+  const address = el("div", { class: "web-ship form-grid", hidden: delivery !== "shipping" },
     field("name", "Full name", home?.legal_name ?? ""), field("line1", "Street address", a.line1 ?? ""),
     field("line2", "Apt, suite (optional)", a.line2 ?? "", false), field("city", "City", a.city ?? ""),
     field("region", "State / province", a.region ?? ""), field("postal_code", "ZIP / postal code", a.postal_code ?? ""),
@@ -89,47 +89,119 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
   return panel;
 }
 
-/** The auction box: current bid, time left, Place Bid; the winner completes the purchase here. */
+/** "Thu, Oct 15, 11:42 AM": the full end date, so a week-long auction never reads as today. */
+function endText(date) {
+  return date.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+/** "23h 41m 05s left" under a day, "2d 4h left" otherwise. */
+function countdown(date) {
+  const ms = date - Date.now();
+  if (ms <= 0) return "Ending…";
+  const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h left`;
+  return `${h ? `${h}h ` : ""}${m}m ${String(s % 60).padStart(2, "0")}s left`;
+}
+
+/** The auction box, laid out like the big marketplaces: current bid, live countdown, a large bid field with quick-bid
+ *  amounts, Place Bid, and Buy It Now behind its own button. Re-checks the auction every 20 seconds. */
 export async function auctionPanel(listing) {
   const panel = el("div", { class: "panel web-auction" });
-  const { data } = await supabase.rpc("auction_status", { listing: listing.id });
-  const a = data?.[0];
-  if (!a) return panel;
-  const ends = a.auction_ends_at ? new Date(a.auction_ends_at) : null;
-  const live = a.auction_state === "live" && ends && ends > new Date();
-  panel.append(el("p", { class: "listing-price" }, a.current_bid_cents ? `${money(a.current_bid_cents, listing.currency)} · ${a.bid_count} ${a.bid_count === 1 ? "bid" : "bids"}` : "No bids yet"),
-    el("p", { class: "meta" }, live ? `Ends ${ends.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}`
-      : a.auction_state ? "This auction has ended." : "This auction hasn't started yet.",
-      a.reserve_met === false ? " · Reserve not met yet" : ""));
-  if (a.i_won && a.needs_checkout) {
-    panel.append(el("p", { class: "status good" }, "You won! Complete your purchase."), await buyPanel(listing, { auctionWin: true }));
-    return panel;
-  }
-  if (!live) return panel;
   const user = await currentUser();
-  if (!user) { panel.append(el("a", { class: "button", href: signInURL() }, "Sign in to bid")); return panel; }
-  if (user.id === listing.seller_id) return panel;
-  if (a.am_leading) panel.append(el("p", { class: "status good" }, `You're the highest bidder${a.my_max_cents ? ` (your maximum: ${money(a.my_max_cents, listing.currency)})` : ""}.`));
-  const min = (a.min_next_bid_cents ?? 0) / 100;
-  const input = el("input", { type: "number", min, step: "0.01", value: min.toFixed(2), "aria-label": "Your maximum bid", inputmode: "decimal" });
-  const error = el("p", { class: "status", role: "status", hidden: true });
-  const button = el("button", { type: "button" }, a.my_max_cents ? "Raise My Maximum" : "Place Bid");
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    const cents = Math.round(Number(input.value) * 100);
-    const { data: result, error: problem } = await supabase.rpc("place_bid", { listing: listing.id, max_bid_cents: cents });
-    button.disabled = false;
-    error.hidden = false;
-    error.className = problem ? "status bad" : "status good";
-    error.textContent = problem ? friendlyError(problem)
-      : result?.status === "leading" ? `You're the highest bidder at ${money(result.current_bid_cents, listing.currency)}.`
-      : `Someone has a higher maximum. Current bid: ${money(result.current_bid_cents, listing.currency)}.`;
-  });
-  panel.append(el("label", {}, `Your maximum bid (at least ${money(a.min_next_bid_cents, listing.currency)})`), input, button, error,
-    el("p", { class: "hint" }, "Geerho bids for you only as much as needed to keep you in the lead, up to your maximum."));
-  if (a.buy_now_available) {
-    const buy = await buyPanel(listing);
-    if (buy) panel.append(el("h3", {}, "Or buy it now"), buy);
+  let timer = null, poll = null;
+  const cur = listing.currency;
+
+  async function draw(message) {
+    const { data } = await supabase.rpc("auction_status", { listing: listing.id });
+    const a = data?.[0];
+    clearInterval(timer);
+    if (!a) { panel.replaceChildren(); return; }
+    const ends = a.auction_ends_at ? new Date(a.auction_ends_at) : null;
+    const live = a.auction_state === "live" && ends && ends > new Date();
+    const bids = a.bid_count ?? 0;
+    const head = el("div", { class: "au-head" },
+      el("p", { class: "au-label" }, bids ? "Current bid" : "Starting bid"),
+      el("p", { class: "au-price" }, money(a.current_bid_cents ?? listing.price_cents, cur)),
+      el("p", { class: "au-sub" }, `${bids} ${bids === 1 ? "bid" : "bids"}`,
+        a.bidders ? ` · ${a.bidders} ${a.bidders === 1 ? "bidder" : "bidders"}` : "",
+        a.reserve_met === false ? " · Reserve not met" : a.reserve_met === true && bids ? " · Reserve met" : ""));
+    const clock = el("span", { class: "au-left" });
+    const time = el("p", { class: "au-time" }, live ? [clock, el("span", { class: "au-ends" }, ` · Ends ${endText(ends)}`)]
+      : a.auction_state ? "This auction has ended." : "This auction hasn't started yet.");
+    panel.replaceChildren(head, time);
+    if (live) {
+      const tick = () => {
+        clock.textContent = countdown(ends);
+        clock.classList.toggle("soon", ends - Date.now() < 3600000);
+        if (ends <= new Date()) { clearInterval(timer); setTimeout(() => draw(), 4000); }
+      };
+      tick();
+      timer = setInterval(tick, 1000);
+    }
+
+    if (a.i_won && a.needs_checkout) {
+      panel.append(el("p", { class: "status good" }, "You won! Complete your purchase."), await buyPanel(listing, { auctionWin: true }));
+      return;
+    }
+    if (!live) return;
+    if (!user) { panel.append(el("a", { class: "button au-bid", href: signInURL() }, "Sign in to bid")); return; }
+    if (user.id === listing.seller_id) { panel.append(el("p", { class: "hint" }, "This is your auction. Bidders see a Place Bid button here.")); return; }
+
+    if (a.am_leading) panel.append(el("p", { class: "status good au-status" },
+      `You're the highest bidder${a.my_max_cents ? `. Your maximum: ${money(a.my_max_cents, cur)}` : ""}.`));
+    else if (a.my_max_cents) panel.append(el("p", { class: "status bad au-status" }, "You've been outbid. Bid again to get back in the lead."));
+    if (message) panel.append(message);
+
+    const min = a.min_next_bid_cents ?? listing.price_cents;
+    const step = a.current_bid_cents ? Math.max(min - a.current_bid_cents, 50) : Math.max(Math.round(min / 1000) * 100, 100);
+    const input = el("input", { id: "au-amount", type: "number", min: (min / 100).toFixed(2), step: "0.01", inputmode: "decimal",
+      placeholder: (min / 100).toFixed(2), "aria-describedby": "au-help" });
+    const quick = el("div", { class: "au-quick", role: "group", "aria-label": "Quick bids" },
+      [min, min + step, min + step * 3].map((cents) => {
+        const b = el("button", { type: "button", class: "secondary" }, `Bid ${money(cents, cur)}`);
+        b.addEventListener("click", () => { input.value = (cents / 100).toFixed(2); place(); });
+        return b;
+      }));
+    const button = el("button", { type: "button", class: "au-bid" }, a.my_max_cents ? "Raise my maximum" : "Place bid");
+    async function place() {
+      const cents = Math.round(Number(input.value) * 100);
+      if (!cents || cents < min) {
+        input.setAttribute("aria-invalid", "true");
+        input.focus();
+        return;
+      }
+      input.removeAttribute("aria-invalid");
+      const { confirmDialog } = await import("./ui-dialog.js");
+      if (!(await confirmDialog("Confirm your bid", `Your maximum bid is ${money(cents, cur)}. Geerho bids for you only as much as needed to keep you in the lead. A winning bid is a promise to buy.`, "Confirm bid"))) return;
+      button.disabled = true;
+      const { data: result, error: problem } = await supabase.rpc("place_bid", { listing: listing.id, max_bid_cents: cents });
+      button.disabled = false;
+      const note = el("p", { class: `status ${problem || result?.status !== "leading" ? "bad" : "good"} au-status`, role: "status" },
+        problem ? friendlyError(problem)
+          : result?.status === "leading" ? `Bid placed. You're the highest bidder at ${money(result.current_bid_cents, cur)}.`
+          : `Someone has a higher maximum. Current bid: ${money(result.current_bid_cents, cur)}.`);
+      draw(note);
+    }
+    button.addEventListener("click", place);
+    input.addEventListener("keydown", (event) => { if (event.key === "Enter") place(); });
+    panel.append(
+      el("label", { class: "au-field", for: "au-amount" }, el("span", { class: "au-currency", "aria-hidden": "true" }, cur === "PHP" ? "₱" : "$"), input),
+      el("p", { id: "au-help", class: "hint" }, `Enter ${money(min, cur)} or more`),
+      button, quick,
+      el("p", { class: "hint" }, "Geerho bids for you only as much as needed to keep you in the lead, up to your maximum."));
+    if (a.buy_now_available && listing.buy_now_cents) {
+      const box = el("div", { class: "au-buynow", hidden: true });
+      const open = el("button", { type: "button", class: "secondary au-bid" }, `Buy It Now · ${money(listing.buy_now_cents, cur)}`);
+      open.addEventListener("click", async () => {
+        if (!box.childElementCount) { const buy = await buyPanel(listing); if (buy) box.append(buy); }
+        box.hidden = !box.hidden;
+        open.setAttribute("aria-expanded", String(!box.hidden));
+      });
+      panel.append(el("div", { class: "au-or" }, "or"), open, box);
+    }
   }
+
+  await draw();
+  poll = setInterval(() => { if (!panel.isConnected) return clearInterval(poll); if (!panel.contains(document.activeElement) && !panel.querySelector(".au-buynow:not([hidden])")) draw(); }, 20000);
   return panel;
 }

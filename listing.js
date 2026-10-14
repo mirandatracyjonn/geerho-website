@@ -1,6 +1,6 @@
 // Listing page: one listing with photos, price, details, seller, and the address rules for homes.
 import { CONDITIONS, appLink, areaText, el, featuredUntil, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
-  propertyFacts, timeLeft, richText } from "./site.js";
+  propertyFacts, richText } from "./site.js";
 
 const PETS = { none: "No pets", cats: "Cats OK", dogs: "Dogs OK", cats_and_dogs: "Cats and dogs OK" };
 const LAUNDRY = { in_unit: "In unit", on_site: "On site", none: "None" };
@@ -10,24 +10,42 @@ const status = document.getElementById("status");
 const article = document.getElementById("listing");
 const id = new URLSearchParams(location.search).get("id");
 
+// Photos: a swipeable square strip (scroll-snap) with arrows, a "2 / 5" counter, and thumbnails. Each photo is shown
+// whole over a soft blurred copy of itself, so tall and wide photos fill the square without cropping.
 function gallery(photos) {
   const sorted = [...photos].sort((a, b) => a.position - b.position);
-  if (!sorted.length) return el("div", { class: "gallery-main" }, el("span", { class: "no-photo" }, "No photo"));
-  const main = el("img", { src: photoURL(sorted[0].storage_path), alt: "Photo 1 of " + sorted.length });
-  const thumbs = sorted.length > 1
-    ? el("ul", { class: "thumbs" }, sorted.map((photo, index) => {
-        const button = el("button", { type: "button", "aria-label": `Show photo ${index + 1}`, "aria-pressed": index === 0 ? "true" : "false" },
-          el("img", { src: photoURL(photo.storage_path), alt: "", loading: "lazy" }));
-        button.addEventListener("click", () => {
-          main.src = photoURL(photo.storage_path);
-          main.alt = `Photo ${index + 1} of ${sorted.length}`;
-          for (const other of button.closest("ul").querySelectorAll("button")) other.setAttribute("aria-pressed", "false");
-          button.setAttribute("aria-pressed", "true");
-        });
-        return el("li", {}, button);
-      }))
-    : null;
-  return el("div", { class: "gallery" }, el("div", { class: "gallery-main" }, main), thumbs);
+  if (!sorted.length) return el("div", { class: "gallery" }, el("div", { class: "gallery-main" }, el("span", { class: "no-photo" }, "No photo")));
+  const urls = sorted.map((photo) => photoURL(photo.storage_path));
+  const track = el("ul", { class: "gallery-track", "aria-label": "Photos", tabindex: "0" }, urls.map((url, index) =>
+    el("li", { class: "gallery-slide" },
+      el("img", { class: "gallery-backdrop", src: url, alt: "", "aria-hidden": "true", loading: index ? "lazy" : "eager" }),
+      el("img", { class: "gallery-photo", src: url, alt: `Photo ${index + 1} of ${urls.length}`, loading: index ? "lazy" : "eager" }))));
+  const counter = el("span", { class: "gallery-count", "aria-hidden": "true" }, `1 / ${urls.length}`);
+  const show = (index) => track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" });
+  const current = () => Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+  const thumbs = urls.length > 1 ? el("ul", { class: "thumbs" }, urls.map((url, index) => {
+    const button = el("button", { type: "button", "aria-label": `Show photo ${index + 1}`, "aria-pressed": index === 0 ? "true" : "false" },
+      el("img", { src: url, alt: "", loading: "lazy" }));
+    button.addEventListener("click", () => show(index));
+    return el("li", {}, button);
+  })) : null;
+  track.addEventListener("scroll", () => {
+    const index = current();
+    counter.textContent = `${index + 1} / ${urls.length}`;
+    thumbs?.querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", String(i === index)));
+  }, { passive: true });
+  track.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowRight") show(Math.min(current() + 1, urls.length - 1));
+    if (event.key === "ArrowLeft") show(Math.max(current() - 1, 0));
+  });
+  const arrow = (dir, label) => {
+    const b = el("button", { type: "button", class: `gallery-arrow ${dir}`, "aria-label": label }, dir === "prev" ? "‹" : "›");
+    b.addEventListener("click", () => show(Math.max(0, Math.min(urls.length - 1, current() + (dir === "prev" ? -1 : 1)))));
+    return b;
+  };
+  return el("div", { class: "gallery" },
+    el("div", { class: "gallery-main" }, track, urls.length > 1 && [arrow("prev", "Previous photo"), arrow("next", "Next photo"), counter]),
+    thumbs);
 }
 
 function facts(listing, address) {
@@ -77,16 +95,6 @@ function facts(listing, address) {
       ? `Local pickup only, for renters within ${listing.lending_radius_miles} miles`
       : "Local pickup only");
   } else {
-    if (listing.listing_format === "auction") {
-      const bids = listing.bid_count ?? 0;
-      add(bids ? "Current bid" : "Starting bid", money(listing.current_bid_cents ?? listing.price_cents, c));
-      add("Bids", String(bids));
-      if (listing.auction_ends_at) {
-        add("Ends", `${new Date(listing.auction_ends_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })} (${timeLeft(listing.auction_ends_at)})`);
-      }
-      if (listing.buy_now_cents && bids === 0) add("Buy It Now", money(listing.buy_now_cents, c));
-      if (listing.reserve_met === false && bids > 0) add("Reserve", "Not met yet");
-    }
     const handover = [];
     if (listing.offers_pickup) handover.push("Local pickup");
     if (listing.offers_shipping) {
@@ -181,7 +189,7 @@ async function render() {
       badge && el("span", { class: "badge inline" }, badge),
       featured && el("span", { class: "badge inline featured" }, "Featured"),
       el("h1", {}, listing.title),
-      el("p", { class: "listing-price" }, priceLine(listing)),
+      listing.listing_format !== "auction" && el("p", { class: "listing-price" }, priceLine(listing)),
       actions(listing),
       facts(listing, address),
       el("h2", {}, "Description"),
