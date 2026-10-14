@@ -37,7 +37,7 @@ export function searchListings(params) {
   return request("rpc/search_listings", { method: "POST", body: JSON.stringify(body) });
 }
 
-const LISTING_COLUMNS = [
+export const LISTING_COLUMNS = [
   "id", "category_id", "title", "description", "price_cents", "currency", "condition", "status", "city", "region",
   "published_at", "expires_at", "offers_pickup", "offers_shipping", "shipping_carriers", "shipping_fee_cents",
   "reference", "listing_format", "auction_ends_at", "buy_now_cents", "current_bid_cents", "bid_count", "reserve_met",
@@ -49,8 +49,25 @@ const LISTING_COLUMNS = [
 ].join(",");
 
 export async function getListing(id) {
-  const rows = await request(`listings?select=${LISTING_COLUMNS}&id=eq.${encodeURIComponent(id)}&status=eq.active`);
+  const path = `listings?select=${LISTING_COLUMNS}&id=eq.${encodeURIComponent(id)}&status=eq.active`;
+  // Signed in: ask as the member, so an auction's winner (and the seller) still sees it after it ends (M81).
+  const token = signedInToken();
+  if (token) {
+    const rows = await request(path, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+    if (rows?.length) return rows[0];
+  }
+  const rows = await request(path);
   return rows[0] ?? null;
+}
+
+/** The signed-in member's access token, as saved by the Supabase library on this browser (or null). */
+function signedInToken() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`sb-${new URL(SUPABASE_URL).hostname.split(".")[0]}-auth-token`) ?? "null");
+    return saved?.access_token && saved.expires_at * 1000 > Date.now() ? saved.access_token : null;
+  } catch {
+    return null;
+  }
 }
 
 /** A home's street address: public for homes for sale, hidden for rentals (the database decides). */

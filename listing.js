@@ -178,6 +178,15 @@ async function render() {
     return;
   }
   if (!listing) {
+    // Signed in: the winner of an ended auction (or a buyer) can still open it (M81).
+    const { currentUser, supabase } = await import("./auth.js");
+    if (await currentUser()) {
+      const { LISTING_COLUMNS } = await import("./site.js");
+      const { data } = await supabase.from("listings").select(LISTING_COLUMNS).eq("id", id).eq("status", "active").maybeSingle();
+      listing = data;
+    }
+  }
+  if (!listing) {
     status.replaceChildren("This listing is no longer available. It may have sold or expired. ",
       el("a", { href: "browse.html" }, "Browse other listings"), ".");
     return;
