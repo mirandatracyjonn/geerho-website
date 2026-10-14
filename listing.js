@@ -1,5 +1,5 @@
 // Listing page: one listing with photos, price, details, seller, and the address rules for homes.
-import { CONDITIONS, appLink, areaText, el, featuredUntil, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
+import { CONDITIONS, areaText, el, featuredUntil, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
   propertyFacts, richText } from "./site.js";
 
 const PETS = { none: "No pets", cats: "Cats OK", dogs: "Dogs OK", cats_and_dogs: "Cats and dogs OK" };
@@ -111,11 +111,7 @@ function facts(listing, address) {
 
 function actions(listing) {
   const isHome = listing.kind === "rental" || listing.kind === "property_sale";
-  const verb = isHome ? "Request a tour" : listing.kind === "service" ? "Request a quote" : listing.kind === "job" ? "Respond"
-    : listing.listing_format === "rental" ? "Rent"
-    : listing.listing_format === "auction" ? "Bid"
-    : "Buy";
-  const message = el("button", { type: "button", class: "secondary" }, "Message the seller");
+  const message = el("button", { type: "button", class: "secondary" }, isHome ? "Message the lister" : listing.kind === "job" ? "Message the poster" : "Message the seller");
   const error = el("p", { class: "status bad", role: "alert", hidden: true });
   message.addEventListener("click", async () => {
     // Loaded only when needed, so browsing stays light.
@@ -137,15 +133,17 @@ function actions(listing) {
       : friendlyError(problem));
     error.hidden = false;
   });
-  // Items and auctions can be bought and bid on right here (website parity); rentals, homes, and services still in the app.
-  const onWeb = (listing.kind ?? "item") === "item" && listing.listing_format !== "rental";
+  // Everything can be done right here, like the app: buy, bid, rent a tool, request a tour or a quote, respond to a job.
   const webBox = el("div", { class: "web-commerce" });
-  if (onWeb) {
-    import("./web-commerce.js").then(async ({ auctionPanel, buyPanel }) => {
-      const panel = listing.listing_format === "auction" ? await auctionPanel(listing) : await buyPanel(listing);
-      if (panel) webBox.append(panel);
-    });
-  }
+  const panelFor = async () => {
+    if (isHome) return (await import("./web-requests.js")).tourPanel(listing);
+    if (listing.kind === "service") return (await import("./web-requests.js")).quotePanel(listing);
+    if (listing.kind === "job") return (await import("./web-requests.js")).respondPanel(listing);
+    if (listing.listing_format === "rental") return (await import("./web-requests.js")).rentPanel(listing);
+    const commerce = await import("./web-commerce.js");
+    return listing.listing_format === "auction" ? commerce.auctionPanel(listing) : commerce.buyPanel(listing);
+  };
+  panelFor().then((panel) => { if (panel) webBox.append(panel); });
   // My own listing: manage it from Profile → My Listings, like the app's owner actions (no "Message the seller").
   import("./auth.js").then(async ({ currentUser }) => {
     const user = await currentUser();
@@ -153,15 +151,12 @@ function actions(listing) {
     message.replaceWith(el("a", { class: "button secondary", href: "account.html#listings" }, "Manage in My Listings"));
   });
   return el("div", { class: "in-app" },
-    onWeb ? webBox : el("a", { class: "button", href: appLink(listing.reference) }, `${verb} in the app`),
+    webBox,
     message,
     error,
-    el("p", { class: "hint" }, listing.kind === "service" || listing.kind === "job"
-      ? "Quote requests and job responses on the website are coming soon. Every member verifies their identity first."
-      : isHome
-      ? "Tour requests on the website are coming soon. Never send money before you've seen the home and confirmed the lister is authorized."
-      : onWeb ? "Every member verifies their identity before buying or bidding. Pay only through Geerho."
-      : "Renting on the website is coming soon. Every member verifies their identity before transacting."),
+    el("p", { class: "hint" }, isHome
+      ? "Every member verifies their identity. Never send money before you've seen the home and confirmed the lister is authorized."
+      : "Every member verifies their identity before transacting. Pay only through Geerho."),
   );
 }
 

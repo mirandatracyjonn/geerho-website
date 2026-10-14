@@ -30,6 +30,25 @@ const EDIT_COLUMNS = "id, kind, listing_format, status, category_id, title, desc
   + "bedrooms, bathrooms, floor_area_sqm, security_deposit_cents, lease_months, property_terms_accepted_at, profession, rate_type, "
   + "remote_ok, travel_radius_km, years_experience, listing_photos(storage_path, position, width, height)";
 
+// --- Elite teams (M46): a team member's new posts belong to the Elite; the server records who posted them. -------------
+
+let teamCache;
+/** The Elite team I'm on (active, and its owner still has Elite), like the app's TeamStore.activeTeam. */
+export async function activeTeam() {
+  if (teamCache === undefined) {
+    const { data } = await supabase.rpc("my_teams");
+    const t = (data ?? []).find((m) => m.status === "active" && m.is_elite);
+    teamCache = t ? { eliteId: t.elite_id, name: t.display_name && t.username ? `${t.display_name} (@${t.username})` : t.display_name || `@${t.username}` } : null;
+  }
+  return teamCache;
+}
+export function postsForTeam() {
+  try { return localStorage.getItem("geerho.team.postsForTeam") !== "0"; } catch { return true; }
+}
+export function setPostsForTeam(on) {
+  try { localStorage.setItem("geerho.team.postsForTeam", on ? "1" : "0"); } catch { /* private browsing */ }
+}
+
 /** "12.50" → 1250; blank or invalid → null. */
 const cents = (text) => {
   const t = String(text ?? "").replace(/,/g, "").trim();
@@ -224,6 +243,7 @@ export async function postForm(root, typeKey, { editId = null, me }) {
   const currency = () => (country() === "PH" ? "PHP" : "USD");
   const metric = () => country() === "PH";
   const editingLive = row?.status === "active";
+  const team = editId ? null : await activeTeam();
   const hasBids = (row?.bid_count ?? 0) > 0;
 
   // Fields
@@ -291,6 +311,7 @@ export async function postForm(root, typeKey, { editId = null, me }) {
     el("div", { class: "screen-head" }, el("a", { class: "back", href: editId ? "account.html#listings" : "post.html" }, icon("chevronLeft"), editId ? "My Listings" : "Post"),
       el("h1", {}, editId ? "Edit Listing" : type.title)),
     hasBids ? el("p", { class: "group-footer" }, "This auction has bids, so its price and format can't change.") : null,
+    !editId && postsForTeam() && team ? el("p", { class: "group-footer" }, `Posting for ${team.name}. Buyers pay them.`) : null,
     section("Photos", el("div", { class: "form-row" }, photoPicker(state, () => {}),
       el("small", { class: "form-hint" }, isFreelance ? "Photos are optional for services and jobs." : "The first photo is the cover. Add up to 10."))),
     section("Details", field("Title", title),
@@ -435,6 +456,9 @@ export async function postForm(root, typeKey, { editId = null, me }) {
         const { error } = await supabase.from("listings").update(listing).eq("id", state.savedId);
         if (error) throw error;
       } else {
+        // Posting for an Elite's team: the listing is theirs (the server records me as posted_by, M46).
+        const team = postsForTeam() ? await activeTeam() : null;
+        if (team) listing.seller_id = team.eliteId;
         const { data, error } = await supabase.from("listings").insert(listing).select("id").single();
         if (error) throw error;
         state.savedId = data.id;

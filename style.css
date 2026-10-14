@@ -938,3 +938,31 @@ svg.chev { width: 16px; height: 16px; flex: none; color: var(--muted); opacity: 
 .published .row-icon .icon { width: 30px; height: 30px; }
 #post .status.bad, #post .status.good { white-space: pre-line; margin: 14px 0 0; }
 #post .post-secondary + .group-footer { margin-top: 12px; }
+.team-banner { cursor: pointer; margin-bottom: 4px; }
+.team-banner small { display: block; color: var(--muted); font-size: 0.85rem; }
+input.switch { appearance: none; -webkit-appearance: none; width: 51px; height: 31px; border-radius: 999px; background: color-mix(in srgb, var(--text) 18%, transparent); position: relative; flex: none; cursor: pointer; transition: background 0.2s; margin: 0; }
+input.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25); transition: transform 0.2s; }
+input.switch:checked { background: #34c759; }
+input.switch:checked::after { transform: translateX(20px); }
+
+/* Rent, tour, quote, and job response boxes on the listing page */
+.web-request { padding: 18px; border: 1px solid var(--rule); display: grid; gap: 10px; }
+.web-request > * { margin: 0; }
+.request-title { margin: 0; font-size: 1.15rem; }
+.web-request-body { display: grid; gap: 10px; }
+.web-request-body > * { margin: 0; }
+.web-request textarea, .web-request input[type="text"], .web-request input[type="date"], .web-request input[type="datetime-local"] {
+  width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.two-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.two-dates label { display: grid; gap: 4px; }
+.rent-summary { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.rent-summary > div { display: flex; justify-content: space-between; }
+.tour-times { display: grid; gap: 8px; }
+.warn-text { color: #a84b00; font-weight: 600; }
+.form-group .form-row input[type="date"], .form-group .form-row input[type="tel"], .form-group .form-row input[type="email"] { width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.proof-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.proof-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.address-lines { white-space: pre-line; margin: 0 0 4px; }
+.area-search { display: flex; gap: 8px; align-items: stretch; }
+.area-search input { flex: 1 1 auto; min-width: 0; width: auto !important; }
+.area-search button { flex: none; width: auto; padding-left: 18px; padding-right: 18px; }

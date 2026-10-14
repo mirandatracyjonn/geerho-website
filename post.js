@@ -1,7 +1,7 @@
 // The Post tab on geerho.com, the same chooser as the app's (SellTabView): Buy and sell · Real estate · Freelance.
 // Each choice opens the same form as the app (post-form.js); post.html?edit=<id> edits one of my listings.
 import { el } from "./site.js";
-import { currentUser, signInURL } from "./auth.js";
+import { currentUser, signInURL, supabase } from "./auth.js";
 import { icon, rowIcon } from "./icons.js";
 
 const CHOICES = [
@@ -40,16 +40,33 @@ async function render() {
     await postForm(main, chosen, { editId, me: user });
     return;
   }
-  main.replaceChildren(
+  const banner = await teamBanner();
+  main.replaceChildren(...[
     el("h1", { class: "large-title" }, "Post"),
     el("h2", { class: "post-question" }, "What would you like to post?"),
+    banner,
     ...CHOICES.flatMap(([section, list]) => [
       el("p", { class: "group-title" }, section),
       el("div", { class: "post-cards" }, list.map(([key, title, subtitle, iconName, tint]) =>
         el("a", { class: "post-card", href: `post.html?type=${key}` }, rowIcon(iconName, tint),
           el("span", { class: "row-title" }, el("strong", {}, title), el("small", {}, subtitle)), icon("chevronRight", "chev")))),
     ]),
-    el("p", { class: "group-footer", style: "margin-top:8px" }, "Everyone who posts on Geerho verifies their identity first."));
+    el("p", { class: "group-footer", style: "margin-top:8px" }, "Everyone who posts on Geerho verifies their identity first.")].filter(Boolean));
+}
+
+/** On an Elite's team: "Post for <name>" like the app (TeamPostingBanner). On by default; remembered in this browser. */
+async function teamBanner() {
+  const { activeTeam, postsForTeam, setPostsForTeam } = await import("./post-form.js");
+  const team = await activeTeam();
+  if (!team) return null;
+  const input = el("input", { type: "checkbox", checked: postsForTeam(), class: "switch", "aria-label": `Post for ${team.name}` });
+  const sub = el("small", {}, postsForTeam() ? "Your new posts are their listings; buyers pay them." : "Your new posts are your own.");
+  input.addEventListener("change", () => {
+    setPostsForTeam(input.checked);
+    sub.textContent = input.checked ? "Your new posts are their listings; buyers pay them." : "Your new posts are your own.";
+  });
+  return el("label", { class: "post-card team-banner" }, rowIcon("team", "indigo"),
+    el("span", { class: "row-title" }, el("strong", {}, `Post for ${team.name}`), sub), input);
 }
 
 render();

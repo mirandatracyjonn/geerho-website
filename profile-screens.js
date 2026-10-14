@@ -660,8 +660,9 @@ function wireRemovePH(ctx) {
 
 async function team(ctx) {
   const [{ data: members }, { data: teams }] = await Promise.all([supabase.rpc("my_team"), supabase.rpc("my_teams")]);
-  const invites = (teams ?? []).filter((t) => t.status === "invited");
-  const joined = (teams ?? []).filter((t) => t.status === "active" && !t.is_elite);
+  // my_teams: teams I'm on or invited to (is_elite: the team's owner still has the Elite plan).
+  const invites = (teams ?? []).filter((t) => t.status !== "active");
+  const joined = (teams ?? []).filter((t) => t.status === "active");
   const name = (p) => p.display_name || `@${p.username}`;
   const out = [];
   if (invites.length) out.push(group(invites.map((t) => el("div", { class: "item" },
@@ -669,7 +670,7 @@ async function team(ctx) {
     actionsBar(button("Join", confirmThen(ctx, `Join ${name(t)}'s team?`, "You can help with their listings and chats.", "Join", () => supabase.rpc("respond_team_invite", { elite: t.elite_id, accept: true }))),
       button("Decline", confirmThen(ctx, "Decline the invitation?", "They're told.", "Decline", () => supabase.rpc("respond_team_invite", { elite: t.elite_id, accept: false })), "secondary")))), "Invitations"));
   if (joined.length) out.push(group(joined.map((t) => el("div", { class: "item" },
-    el("div", { class: "item-row" }, avatar(t.avatar_url, name(t), 44), el("span", { class: "row-title" }, el("strong", {}, name(t)), el("small", {}, "You're on their team"))),
+    el("div", { class: "item-row" }, avatar(t.avatar_url, name(t), 44), el("span", { class: "row-title" }, el("strong", {}, name(t)), el("small", {}, t.is_elite ? "You're on their team. Your new posts can be theirs (Post → Post for …)." : "Their Elite plan has ended, so posting for them is paused."))),
     actionsBar(button("Leave Team", confirmThen(ctx, "Leave this team?", "You stop helping with their listings and chats.", "Leave", () => supabase.rpc("remove_team_member", { elite: t.elite_id, member: ctx.me.id }), { danger: true }), "secondary")))), "Teams you're on"));
   const { data: plan } = await supabase.from("member_plans").select("plan, status").eq("user_id", ctx.me.id).maybeSingle();
   if (plan?.plan === "elite" && plan.status === "active") {
@@ -703,8 +704,87 @@ async function licenses(ctx) {
       l.review_note ? el("p", { class: "hint" }, `Moderator: ${l.review_note}`) : null,
       actionsBar(button("Delete", confirmThen(ctx, "Delete this license?", "It's removed from your profile.", "Delete", () => supabase.rpc("delete_license", { license: l.id }), { danger: true }), "secondary")));
   });
+  if (ctx.state.addingLicense) return [await licenseForm(ctx)];
+  const add = button("Add License", async () => { ctx.state.addingLicense = true; ctx.reload(); });
   return [rows.length ? group(rows, "Your licenses") : empty("seal", "No licenses yet", "Add a professional license so clients see it's verified."),
-    el("p", { class: "group-footer" }, "To add a license (with a photo of it for the moderators), use Profile → Professional Licenses → Add License in the Geerho app.")];
+    el("div", { class: "stack-actions" }, add)];
+}
+
+const US_STATES = { AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut",
+  DE: "Delaware", DC: "District of Columbia", FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana",
+  IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan",
+  MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire",
+  NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma",
+  OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
+  UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming" };
+
+function input(attrs) { return el("input", { type: "text", ...attrs }); }
+function labeled(label, control) { return el("label", { class: "form-row" }, el("span", { class: "form-label" }, label), control); }
+
+/** Add a License (the app's LicenseForm): what and where, details, contact, an optional photo of the license. */
+async function licenseForm(ctx) {
+  const { data: professions } = await supabase.from("professions").select("slug, name, license_required").order("position");
+  const profession = el("select", {}, el("option", { value: "" }, "Choose a profession"),
+    (professions ?? []).filter((p) => p.license_required).map((p) => el("option", { value: p.slug }, p.name)));
+  const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+  const codes = "US PH CA MX GB AU NZ SG JP KR AE SA QA DE FR ES IT NL IE IN".split(" ");
+  const country = el("select", {}, codes.map((c) => el("option", { value: c, selected: c === "US" }, countryNames.of(c))));
+  const state = el("select", {}, Object.entries(US_STATES).map(([code, name]) => el("option", { value: code, selected: code === "CA" }, name)));
+  const stateRow = labeled("State", state);
+  country.addEventListener("change", () => { stateRow.hidden = country.value !== "US"; });
+  const issuer = input({ maxlength: 100, placeholder: "Issued by (e.g. California DRE, PRC)" });
+  const number = input({ maxlength: 50, placeholder: "License number" });
+  const fullName = input({ maxlength: 100, placeholder: "Full name exactly as on the license", autocomplete: "name" });
+  const birth = el("input", { type: "date", "aria-label": "Date of birth", max: new Date(Date.now() - 18 * 365.25 * 86400000).toISOString().slice(0, 10) });
+  const expires = el("input", { type: "date", "aria-label": "Expires (optional)", min: new Date().toISOString().slice(0, 10) });
+  const phone = el("input", { type: "tel", maxlength: 30, placeholder: "Phone", autocomplete: "tel" });
+  const email = el("input", { type: "email", maxlength: 100, placeholder: "Email (optional)", autocomplete: "email" });
+  const business = input({ maxlength: 100, placeholder: "Business or brokerage name (optional)" });
+  const details = el("textarea", { maxlength: 1000, rows: 2, placeholder: "Anything else moderators should know (optional)" });
+  let photo = null;
+  const photoLabel = el("span", {}, "Add a Photo of Your License");
+  const photoInput = el("input", { type: "file", accept: "image/*", class: "sr-only", id: "license-photo" });
+  photoInput.addEventListener("change", () => { photo = photoInput.files?.[0] ?? null; photoLabel.textContent = photo ? "Photo added · Change" : "Add a Photo of Your License"; });
+  const submit = button("Submit", async () => {
+    if (!profession.value || !issuer.value.trim() || !number.value.trim() || !fullName.value.trim() || !birth.value || !phone.value.trim()) {
+      return ctx.fail("Fill in the profession, issuer, license number, full name, date of birth, and phone.");
+    }
+    let path = null;
+    if (photo) {
+      path = `${ctx.me.id}/${crypto.randomUUID()}.jpg`;
+      const { error } = await supabase.storage.from("license-documents").upload(path, await shrinkJPEG(photo), { contentType: "image/jpeg" });
+      if (error) return ctx.fail("The photo couldn't be uploaded. Check your connection and try again.");
+    }
+    const { error } = await supabase.rpc("submit_license", {
+      profession: profession.value, country: country.value, subdivision: country.value === "US" ? state.value : null,
+      issuing_body: issuer.value.trim(), license_number: number.value.trim(), full_name: fullName.value.trim(), date_of_birth: birth.value,
+      contact_phone: phone.value.trim(), ...(email.value.trim() ? { contact_email: email.value.trim() } : {}), ...(expires.value ? { expires_on: expires.value } : {}),
+      ...(business.value.trim() ? { business_name: business.value.trim() } : {}), ...(details.value.trim() ? { details: details.value.trim() } : {}),
+      ...(path ? { document_path: path } : {}),
+    });
+    if (error) {
+      if (path) await supabase.storage.from("license-documents").remove([path]).catch(() => {});
+      return ctx.fail(friendlyError(error));
+    }
+    ctx.state.addingLicense = false;
+    ctx.reload();
+  });
+  const cancel = button("Cancel", () => { ctx.state.addingLicense = false; ctx.reload(); }, "secondary");
+  return [
+    el("p", { class: "group-title" }, "What and where"),
+    el("div", { class: "group form-group" }, labeled("Profession", profession), labeled("Country", country), stateRow),
+    el("p", { class: "group-footer" }, "Where the license was issued and where you practice."),
+    el("p", { class: "group-title" }, "License details"),
+    el("div", { class: "group form-group" }, labeled("Issued by", issuer), labeled("License number", number), labeled("Full name", fullName),
+      labeled("Date of birth", birth), labeled("Expires (optional)", expires)),
+    el("p", { class: "group-footer" }, "Moderators compare these with the issuer's public records and with your verified ID."),
+    el("p", { class: "group-title" }, "Contact"),
+    el("div", { class: "group form-group" }, labeled("Phone", phone), labeled("Email (optional)", email), labeled("Business (optional)", business), labeled("Notes (optional)", details)),
+    el("p", { class: "group-title" }, "License photo (optional)"),
+    el("div", { class: "group form-group" }, el("div", { class: "form-row" }, el("label", { for: "license-photo", class: "button secondary" }, photoLabel), photoInput)),
+    el("p", { class: "group-footer" }, "Helps moderators approve you faster. Only you and moderators can see it."),
+    el("div", { class: "stack-actions" }, submit, cancel),
+  ];
 }
 
 async function milestone() {
@@ -722,17 +802,86 @@ async function milestone() {
     m.transferred_at ? el("p", { class: "group-footer" }, "Your TikTok level was transferred.") : null];
 }
 
-async function address() {
+const PROOF_KINDS = [["utility_bill", "Utility bill (power, water, internet)"], ["bank_statement", "Bank or credit card statement"],
+  ["lease", "Lease or rental agreement"], ["government_letter", "Letter from a government office"], ["insurance", "Insurance policy or bill"],
+  ["tax_document", "Tax document"], ["employer_letter", "Letter or pay slip from your employer"], ["other", "Other official document"]];
+
+/** Home Address (the app's HomeAddressView): private; a change needs 2–3 proofs that a moderator checks. */
+async function address(ctx) {
   const { data, error } = await supabase.rpc("my_home_address");
   if (error) throw error;
   const a = data?.address;
-  return [group([el("div", { class: "cell-pad" }, a
-    ? [el("strong", {}, data.legal_name ?? ""), el("p", { style: "margin:4px 0" }, [a.line1, a.line2, `${a.city ?? ""}, ${a.region ?? ""} ${a.postal_code ?? ""}`, a.country].filter(Boolean).join("\n")),
-      el("span", { class: "state good" }, a.source === "id_document" ? "From your ID" : "Verified")]
-    : el("p", {}, "No home address yet. If your ID shows your address, we add it when you verify."))], "Your address",
-    "Private: never on your profile. It fills in checkout for you."),
-    data?.request ? el("p", { class: "group-footer" }, "Your address change is waiting for a moderator.") : null,
-    el("p", { class: "group-footer" }, "To change it (with two proofs of address), use Profile → Home Address in the Geerho app.")];
+  const pending = data?.request?.status === "pending";
+  const out = [group([el("div", { class: "cell-pad" }, a
+    ? [el("p", { class: "address-lines" }, [a.line1, a.line2, `${a.city ?? ""}${a.region ? `, ${a.region}` : ""} ${a.postal_code ?? ""}`].filter(Boolean).join("\n")),
+      el("span", { class: "state muted" }, a.country)]
+    : el("p", {}, "No address yet. If your ID shows your address, we add it when you verify."))], "Your address",
+    "Private: it's never on your profile. It fills in checkout, and only the seller of something you buy sees the address you send them.")];
+  if (pending) {
+    out.push(group([el("div", { class: "cell-pad" }, el("p", {}, "A moderator checks your documents, usually within 1–2 business days. You'll hear back in Geerho Support."),
+      actionsBar(button("Cancel This Change", confirmThen(ctx, "Cancel this change?", "Your documents are deleted.", "Cancel Change", () => supabase.rpc("cancel_address_change"), { danger: true }), "secondary")))], "Change requested"));
+    return out;
+  }
+  if (!ctx.state.changingAddress) {
+    out.push(el("div", { class: "stack-actions" }, button(a ? "Change My Address" : "Add My Address", () => { ctx.state.changingAddress = true; ctx.reload(); }, "secondary")));
+    return out;
+  }
+  const line1 = input({ maxlength: 200, placeholder: "Street address", autocomplete: "address-line1" });
+  const line2 = input({ maxlength: 100, placeholder: "Apt, suite (optional)", autocomplete: "address-line2" });
+  const city = input({ maxlength: 100, placeholder: "City", autocomplete: "address-level2" });
+  const region = input({ maxlength: 100, placeholder: "State / province", autocomplete: "address-level1" });
+  const postal = input({ maxlength: 20, placeholder: "ZIP / postal code", autocomplete: "postal-code" });
+  const country = el("select", { autocomplete: "country" }, [["US", "United States"], ["PH", "Philippines"]].map(([v, n]) => el("option", { value: v, selected: v === (a?.country ?? "US") }, n)));
+  const proofs = [];
+  const list = el("ul", { class: "proof-list" });
+  const kind = el("select", { "aria-label": "Document type" }, PROOF_KINDS.map(([v, n]) => el("option", { value: v }, n)));
+  const file = el("input", { type: "file", accept: "image/*", class: "sr-only", id: "proof-file" });
+  const addLabel = el("label", { for: "proof-file", class: "button secondary" }, "Add a Photo of This Document");
+  const count = el("p", { class: "group-title" });
+  const drawProofs = () => {
+    count.textContent = `Proofs of address (${proofs.length} of 2–3)`;
+    list.replaceChildren(...proofs.map((p, i) => {
+      const remove = el("button", { type: "button", class: "secondary" }, "Remove");
+      remove.addEventListener("click", () => { proofs.splice(i, 1); drawProofs(); });
+      return el("li", {}, el("span", {}, `${i + 1}. ${PROOF_KINDS.find(([v]) => v === p.kind)[1]}`), remove);
+    }));
+    addLabel.hidden = kind.hidden = proofs.length >= 3;
+  };
+  file.addEventListener("change", () => { const f = file.files?.[0]; if (f && proofs.length < 3) proofs.push({ kind: kind.value, file: f }); file.value = ""; drawProofs(); });
+  drawProofs();
+  const send = button("Send for Review", async () => {
+    if (proofs.length < 2) return ctx.fail("Add at least 2 proofs of address.");
+    if (!line1.value.trim() || !city.value.trim() || !postal.value.trim()) return ctx.fail("Fill in the street, city, and ZIP or postal code.");
+    const bucket = supabase.storage.from("address-proofs");
+    const uploaded = [];
+    for (const p of proofs) {
+      const path = `${ctx.me.id}/${crypto.randomUUID()}.jpg`;
+      const { error: e } = await bucket.upload(path, await shrinkJPEG(p.file), { contentType: "image/jpeg" });
+      if (e) {
+        if (uploaded.length) await bucket.remove(uploaded.map((u) => u.path)).catch(() => {});
+        return ctx.fail("A document couldn't be uploaded. Check your connection and try again.");
+      }
+      uploaded.push({ path, kind: p.kind });
+    }
+    const { error: e } = await supabase.rpc("submit_address_change", {
+      address: { line1: line1.value.trim(), ...(line2.value.trim() ? { line2: line2.value.trim() } : {}), city: city.value.trim(),
+        ...(region.value.trim() ? { region: region.value.trim() } : {}), postal_code: postal.value.trim(), country: country.value },
+      proofs: uploaded,
+    });
+    if (e) {
+      // Don't leave documents behind when the request is refused.
+      await bucket.remove(uploaded.map((u) => u.path)).catch(() => {});
+      return ctx.fail(friendlyError(e));
+    }
+    ctx.state.changingAddress = false;
+    ctx.reload();
+  });
+  out.push(el("p", { class: "group-title" }, "New address"),
+    el("div", { class: "group form-group" }, ...[line1, line2, city, region, postal, country].map((x) => el("div", { class: "form-row" }, x))),
+    el("p", { class: "group-footer" }, "You'll need 2 or 3 recent documents showing your name and the new address, like a utility bill and a bank statement. A moderator checks them, then they're deleted."),
+    count, el("div", { class: "group form-group" }, el("div", { class: "form-row" }, list, kind, addLabel, file)),
+    el("div", { class: "stack-actions" }, send, button("Cancel", () => { ctx.state.changingAddress = false; ctx.reload(); }, "secondary")));
+  return out;
 }
 
 // --- Followers · Following · Contacts, and Blocked Users ------------------------------------------------------------
