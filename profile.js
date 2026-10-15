@@ -150,7 +150,10 @@ async function inviteFriends(username, button) {
     + "so it's one person, one account, which helps keep scammers out.\n\nWhether you want to buy and sell, browse real estate, rent tools, "
     + "or find jobs, nearby or remote, you can do it with peace of mind. We'd love to have you in our verified community."
     + (username ? `\n\nOnce you're in, follow me: @${username}` : "")
-    + "\n\nDownload it for iPhone or Android and check it out here: https://geerho.com/download.html";
+    + "\n\nTip: Geerho is in beta on Apple's TestFlight app. Open the link in Safari (not inside another app), install "
+    + "TestFlight if asked, then tap Accept and Install. No code is needed."
+    + "\n\nOn Android or a computer? Go to https://geerho.com/download.html"
+    + "\n\niPhone: download it and check it out here: https://testflight.apple.com/join/VskGx1Jk";
   if (navigator.share) {
     try { await navigator.share({ title: "Join Geerho, the verified online marketplace", text }); } catch { /* closed */ }
     return;
