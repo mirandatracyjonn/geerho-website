@@ -17,7 +17,10 @@ function recoveryCodes() {
   });
 }
 
-const passkeysSupported = () => typeof window.PublicKeyCredential === "function" && !!supabase.auth.mfa.webauthn;
+// Passkeys need Supabase's WebAuthn sign-in, which the dashboard doesn't offer yet (checked 2026-10-15): until it does,
+// the passkey option stays hidden so nobody sees a button that fails. Turn this on when Supabase supports it.
+const PASSKEYS_ENABLED = false;
+const passkeysSupported = () => PASSKEYS_ENABLED && typeof window.PublicKeyCredential === "function" && !!supabase.auth.mfa.webauthn;
 
 async function factors() {
   const { data } = await supabase.auth.mfa.listFactors();
@@ -153,6 +156,23 @@ export async function renderSecurity(cell) {
     actions.append(codes, off);
   }
   rows.push(actions);
+
+  // Super Admins: moderator and Super Admin tools need a two-step sign-in (the apps' "Require for Staff").
+  const { data: role } = await supabase.rpc("my_moderation_role");
+  if (role === "owner") {
+    const box = el("input", { type: "checkbox", id: "staff-require-mfa" });
+    box.checked = !!staff?.required;
+    box.addEventListener("change", async () => {
+      error.hidden = true;
+      const wanted = box.checked;
+      const { error: e } = await supabase.rpc("set_staff_require_mfa", { required: wanted });
+      if (e) { box.checked = !wanted; return fail(wanted ? "Turn on two-step verification and sign in with it before requiring it for staff." : "We couldn't change this. Please try again."); }
+      renderSecurity(cell);
+    });
+    rows.push(el("strong", { class: "mfa-sub" }, "Staff · Super Admin"),
+      el("label", { class: "check-row", for: "staff-require-mfa" }, box, " Require for Staff"),
+      el("p", { class: "hint" }, "When it's on, moderator and Super Admin tools work only after signing in with two-step verification. Turn it on once every staff member has set it up."));
+  }
 
   if (passkeysSupported()) {
     rows.push(el("strong", { class: "mfa-sub" }, "Passkeys"),
