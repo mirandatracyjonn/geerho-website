@@ -255,7 +255,7 @@ const VERIFICATION_TEXT = {
   unverified: "Verify your identity to message, buy, sell, bid, and rent on Geerho. You'll need a government ID and a camera for a quick selfie. Our partner Didit checks it; Geerho never sees your ID images and keeps only your legal name, date of birth, the address on your ID (private to you), and a scrambled code that makes sure each person has one account.",
   in_progress: "Your verification has started but isn't finished. If you closed the window, you can start again.",
   in_review: "Thanks! Your verification is being reviewed. This usually takes a few minutes.",
-  verified: "You're verified. You have the blue Verified badge on Geerho.",
+  verified: "You're verified. You have the green Verified badge on Geerho.",
   declined: "Your verification wasn't approved. You can try again if you have attempts left, or contact support.",
   under18: "Geerho is for adults 18 and older. Your ID shows you're under 18, so we couldn't verify your account. You can keep browsing, but buying, selling, and messaging are for adults only. If your birth date was read incorrectly, contact Geerho Support.",
   duplicate: "Your ID is already verified on another Geerho account. Each person can have one account, so sign in with that one. We sent you a message in Geerho Support saying which account and how to sign in.",

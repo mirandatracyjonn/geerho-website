@@ -71,3 +71,17 @@ export function rowIcon(name, tint) {
   span.append(icon(name));
   return span;
 }
+
+/** The Verified badge (2026-10-15, TJ): a green shield with a white outline and a white check, same as the apps. */
+export function verifiedBadge(size = 20) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("width", String(size));
+  svg.setAttribute("height", String(size));
+  svg.setAttribute("class", "verified-badge");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "Verified identity");
+  svg.innerHTML = '<path d="M12 1.8 3.8 4.9v6.4c0 5.3 3.5 9.6 8.2 10.9 4.7-1.3 8.2-5.6 8.2-10.9V4.9z" fill="#1fa34a" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/>'
+    + '<path d="m8.2 12.2 2.6 2.6 5-5.2" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>';
+  return svg;
+}

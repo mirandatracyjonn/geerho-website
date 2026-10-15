@@ -2,7 +2,7 @@
 // rating, city, member since, bio, Follow and Message, Followers · Following · Contacts, licenses, listings, reviews.
 import { el, listingCard } from "./site.js";
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
-import { icon } from "./icons.js";
+import { icon, verifiedBadge } from "./icons.js";
 import { avatar, memberStar } from "./profile.js";
 
 const main = document.getElementById("member");
@@ -62,7 +62,7 @@ async function render() {
     el("div", { class: "profile-card" },
       el("div", { class: "who" }, avatar(p.avatar_url, name, 72),
         el("div", {},
-          el("span", { class: "name" }, memberStar(p), name, p.verified_at ? el("span", { "aria-label": "Verified" }, icon("seal", "icon verified-mark")) : null),
+          el("span", { class: "name" }, memberStar(p), name, p.verified_at ? verifiedBadge(20) : null),
           el("p", { class: "handle" }, `@${p.username}`),
           p.milestone_level ? el("span", { class: "pill on-brand" }, `Level ${p.milestone_level}`) : null,
           el("span", { class: "pill white" }, r?.total ? [icon("star", "icon star-fill"), ` ${Number(r.average).toFixed(1)} (${r.total})`] : [icon("star"), " No reviews yet"]),

@@ -4,7 +4,7 @@
 // "‹ Profile" back link, like the app's navigation. Settings is the gear, Edit Profile the header button.
 import { el } from "./site.js";
 import { friendlyError, supabase } from "./auth.js";
-import { icon, rowIcon } from "./icons.js";
+import { icon, rowIcon, verifiedBadge } from "./icons.js";
 
 let me = null;
 let myProfileRow = null;
@@ -104,7 +104,7 @@ async function renderHub() {
     el("div", { class: "who" },
       avatar(p.avatar_url, p.display_name || p.username, 72),
       el("div", {},
-        el("span", { class: "name" }, memberStar(p), p.display_name || p.username, p.verified_at ? el("span", { "aria-label": "Verified" }, icon("seal", "icon verified-mark")) : null),
+        el("span", { class: "name" }, memberStar(p), p.display_name || p.username, p.verified_at ? verifiedBadge(20) : null),
         el("p", { class: "handle" }, `@${p.username}`),
         p.milestone_level ? el("span", { class: "pill on-brand" }, `Level ${p.milestone_level}`) : null,
         el("span", { class: "pill white" }, r?.total
