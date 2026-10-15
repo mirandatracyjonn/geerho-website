@@ -264,6 +264,7 @@ async function route() {
   if (name === "settings" || name === "verify") {
     settings.hidden = false;
     document.title = "Settings · Geerho";
+    import("./mfa.js").then(({ renderSecurity }) => renderSecurity(document.getElementById("security-cell")));
     if (name === "verify") document.getElementById("verification").closest("li").scrollIntoView({ block: "center" });
     return;
   }

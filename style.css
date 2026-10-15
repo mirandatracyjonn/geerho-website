@@ -1026,3 +1026,18 @@ input.switch:checked::after { transform: translateX(20px); }
 .member-star.silver { color: #c9ced8; text-shadow: 0 1px 2px rgba(40, 45, 60, 0.45); }
 /* Verified badge: green shield, white outline and check; a soft shadow so the white edge shows on white pages too. */
 .verified-badge { flex: none; vertical-align: -3px; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.28)); }
+
+/* Two-step verification (M98) */
+.mfa-dialog { width: min(440px, calc(100vw - 32px)); }
+.mfa-dialog input, #security-cell input { width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.mfa-code { font-size: 1.6rem !important; letter-spacing: 0.3em; text-align: center; font-variant-numeric: tabular-nums; }
+.mfa-dialog > button, .mfa-dialog > input { margin-top: 10px; width: 100%; }
+.mfa-links { display: flex; justify-content: space-between; margin-top: 14px; }
+.link-button { background: none; border: 0; color: var(--link); padding: 4px 0; min-height: 0; font-weight: 600; cursor: pointer; }
+.mfa-qr { display: block; background: #fff; padding: 8px; border-radius: 12px; margin: 10px 0; }
+.mfa-secret { word-break: break-all; }
+.mfa-steps { padding-left: 20px; }
+.mfa-recovery { columns: 2; padding-left: 22px; font-size: 1rem; }
+.mfa-recovery code { font-size: 1rem; }
+.mfa-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
+.mfa-sub { display: block; margin-top: 16px; }

@@ -65,6 +65,10 @@ export function friendlyError(error) {
 /** Badges on the header, like the app's: the bell's unread count and the Inbox tab's unread chats and support replies. */
 async function updateHeader() {
   if (!(await currentUser())) return;
+  // Two-step verification (M98): an account with a second step must pass it before using the site.
+  import("./mfa.js").then(async ({ needsSecondStep, secondStepDialog }) => {
+    if (await needsSecondStep()) secondStepDialog();
+  }).catch(() => {});
   const bell = document.querySelector(".site-header .bell");
   const inbox = document.querySelector('.site-header .tab-bar a[data-tab="inbox"]');
   const [{ data: count }, { data: chats }, { data: tickets }] = await Promise.all([
