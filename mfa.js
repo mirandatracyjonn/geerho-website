@@ -160,17 +160,18 @@ export async function renderSecurity(cell) {
   // Super Admins: moderator and Super Admin tools need a two-step sign-in (the apps' "Require for Staff").
   const { data: role } = await supabase.rpc("my_moderation_role");
   if (role === "owner") {
-    const box = el("input", { type: "checkbox", id: "staff-require-mfa" });
+    const box = el("input", { type: "checkbox", class: "switch", id: "staff-require-mfa", "aria-label": "Require for Staff" });
     box.checked = !!staff?.required;
     box.addEventListener("change", async () => {
       error.hidden = true;
       const wanted = box.checked;
+      if (wanted && aal?.currentLevel !== "aal2") { box.checked = false; return fail("Turn on two-step verification and sign in with it before requiring it for staff."); }
       const { error: e } = await supabase.rpc("set_staff_require_mfa", { required: wanted });
-      if (e) { box.checked = !wanted; return fail(wanted ? "Turn on two-step verification and sign in with it before requiring it for staff." : "We couldn't change this. Please try again."); }
+      if (e) { box.checked = !wanted; return fail(e.message || "We couldn't change this. Please try again."); }
       renderSecurity(cell);
     });
     rows.push(el("strong", { class: "mfa-sub" }, "Staff · Super Admin"),
-      el("label", { class: "check-row", for: "staff-require-mfa" }, box, " Require for Staff"),
+      el("div", { class: "mfa-row" }, el("label", { for: "staff-require-mfa" }, "Require for Staff"), box),
       el("p", { class: "hint" }, "When it's on, moderator and Super Admin tools work only after signing in with two-step verification. Turn it on once every staff member has set it up."));
   }
 

@@ -16,10 +16,11 @@ function linkFor(item) {
     case "listing": return `listing.html?id=${encodeURIComponent(item.target_id)}`;
     case "support": return item.target_id ? `contact.html?t=${encodeURIComponent(item.target_id)}` : "contact.html";
     case "live": return `live.html?show=${encodeURIComponent(item.target_id)}`;
-    // Same places as the app (NotificationsView): Profile → Team, Watching, Professional Licenses; a member's profile.
+    // Same places as the app (NotificationsView): Profile → Team, Watching, Professional Licenses; Settings → Security; a member's profile.
     case "team": return "account.html#team";
     case "watching": return "account.html#watching";
     case "licenses": return "account.html#licenses";
+    case "security": return "account.html#security";
     case "profile": return `member.html?id=${encodeURIComponent(item.target_id)}`;
     default: return null;
   }

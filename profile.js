@@ -261,10 +261,12 @@ async function route() {
     renderEdit();
     return;
   }
-  if (name === "settings" || name === "verify") {
+  if (name === "settings" || name === "verify" || name === "security") {
     settings.hidden = false;
     document.title = "Settings · Geerho";
-    import("./mfa.js").then(({ renderSecurity }) => renderSecurity(document.getElementById("security-cell")));
+    const security = document.getElementById("security-cell");
+    import("./mfa.js").then(({ renderSecurity }) => renderSecurity(security))
+      .then(() => { if (name === "security") security.scrollIntoView({ block: "start" }); });
     if (name === "verify") document.getElementById("verification").closest("li").scrollIntoView({ block: "center" });
     return;
   }
