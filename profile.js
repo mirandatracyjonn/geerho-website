@@ -41,10 +41,14 @@ export function avatar(url, name, size = 44) {
   return el("span", { class: "avatar initials", "aria-hidden": "true", style: `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.38)}px` }, initials);
 }
 
-/** The silver Beta Tester star before @username (M90): beta testers, once verified. */
-export function betaStar(p) {
-  return p?.beta_badge_at && p.verified_at ? el("span", { class: "beta-badge", title: "Geerho Beta Tester", "aria-label": "Beta Tester" }, "★") : null;
+/** The star before a member's name: gold for Geerho Super Admins (M93), silver for verified
+ *  beta testers (M90). One star at most; gold wins. */
+export function memberStar(p) {
+  if (p?.staff_badge_at) return el("span", { class: "member-star gold", title: "Geerho Super Admin", "aria-label": "Geerho Super Admin" }, "★");
+  if (p?.beta_badge_at && p.verified_at) return el("span", { class: "member-star silver", title: "Geerho Beta Tester", "aria-label": "Beta Tester" }, "★");
+  return null;
 }
+export const betaStar = memberStar;
 
 /** A grouped-list row: colored icon, title, optional badge or value, chevron. */
 export function navRow(target, title, iconName, tint, { badge = null, value = null } = {}) {
@@ -100,8 +104,8 @@ async function renderHub() {
     el("div", { class: "who" },
       avatar(p.avatar_url, p.display_name || p.username, 72),
       el("div", {},
-        el("span", { class: "name" }, p.display_name || p.username, p.verified_at ? el("span", { "aria-label": "Verified" }, icon("seal", "icon verified-mark")) : null),
-        el("p", { class: "handle" }, betaStar(p), `@${p.username}`),
+        el("span", { class: "name" }, memberStar(p), p.display_name || p.username, p.verified_at ? el("span", { "aria-label": "Verified" }, icon("seal", "icon verified-mark")) : null),
+        el("p", { class: "handle" }, `@${p.username}`),
         p.milestone_level ? el("span", { class: "pill on-brand" }, `Level ${p.milestone_level}`) : null,
         el("span", { class: "pill white" }, r?.total
           ? [icon("star", "icon star-fill"), ` ${Number(r.average).toFixed(1)} (${r.total})`]
@@ -274,7 +278,7 @@ async function route() {
 export async function startProfile(user, profile, rerender) {
   me = user;
   rerenderAccount = rerender;
-  const { data } = await supabase.from("profiles").select("id, username, display_name, avatar_url, bio, city, verified_at, milestone_level, beta_badge_at").eq("id", user.id).single();
+  const { data } = await supabase.from("profiles").select("id, username, display_name, avatar_url, bio, city, verified_at, milestone_level, beta_badge_at, staff_badge_at").eq("id", user.id).single();
   myProfileRow = data ?? profile;
   if (!startProfile.wired) {
     startProfile.wired = true;

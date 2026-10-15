@@ -265,7 +265,7 @@ async function render() {
   const body = el("div", {});
   main.replaceChildren(...[
     el("h1", { class: "large-title" }, "Beta Testing"),
-    el("p", { class: "beta-star-line" }, el("span", { class: "beta-star", "aria-hidden": "true" }, "★"), " Thank you for testing Geerho. Your silver star shows before your @username."),
+    el("p", { class: "beta-star-line" }, el("span", { class: "beta-star", "aria-hidden": "true" }, "★"), " Thank you for testing Geerho. Your silver star shows before your name."),
     profile?.verified_at ? null : el("a", { class: "verify-card", href: "account.html#verify" }, icon("seal"),
       el("span", {}, el("strong", {}, "Verify your identity first"), "Beta testers are verified members. Verify with Didit, then check off your tasks.")),
     tabs, body,

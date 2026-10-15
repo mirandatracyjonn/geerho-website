@@ -1020,3 +1020,7 @@ input.switch:checked::after { transform: translateX(20px); }
 .beta-guide summary::before, .beta-role summary::before { content: none; display: none; }
 .beta-guide summary::after, .beta-role summary::after { content: "›"; margin-left: auto; color: var(--muted); font-size: 1.3rem; transition: transform 0.2s; }
 .beta-guide[open] summary::after, .beta-role[open] summary::after { transform: rotate(90deg); }
+/* Stars before a member's name (M93): gold for Geerho staff, silver for beta testers. */
+.member-star { font-size: 0.95em; line-height: 1; }
+.member-star.gold { color: #f5b301; text-shadow: 0 1px 2px rgba(120, 80, 0, 0.45); }
+.member-star.silver { color: #c9ced8; text-shadow: 0 1px 2px rgba(40, 45, 60, 0.45); }
