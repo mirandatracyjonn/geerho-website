@@ -3,7 +3,7 @@
 import { el, listingCard } from "./site.js";
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { icon } from "./icons.js";
-import { avatar } from "./profile.js";
+import { avatar, betaStar } from "./profile.js";
 
 const main = document.getElementById("member");
 const status = document.getElementById("status");
@@ -13,7 +13,7 @@ async function render() {
   if (!id) { status.textContent = "This member wasn't found."; return; }
   const me = await currentUser();
   const [{ data: p }, { data: follows }, { data: rating }, { data: licenses }, { data: listings }, { data: reviews }] = await Promise.all([
-    supabase.from("profiles").select("id, username, display_name, avatar_url, bio, city, created_at, verified_at, milestone_level").eq("id", id).maybeSingle(),
+    supabase.from("profiles").select("id, username, display_name, avatar_url, bio, city, created_at, verified_at, milestone_level, beta_badge_at").eq("id", id).maybeSingle(),
     supabase.rpc("follow_summary", { member: id }),
     supabase.rpc("rating_summary", { target: id }),
     supabase.rpc("public_licenses", { person: id }),
@@ -63,7 +63,7 @@ async function render() {
       el("div", { class: "who" }, avatar(p.avatar_url, name, 72),
         el("div", {},
           el("span", { class: "name" }, name, p.verified_at ? el("span", { "aria-label": "Verified" }, icon("seal", "icon verified-mark")) : null),
-          el("p", { class: "handle" }, `@${p.username}`),
+          el("p", { class: "handle" }, betaStar(p), `@${p.username}`),
           p.milestone_level ? el("span", { class: "pill on-brand" }, `Level ${p.milestone_level}`) : null,
           el("span", { class: "pill white" }, r?.total ? [icon("star", "icon star-fill"), ` ${Number(r.average).toFixed(1)} (${r.total})`] : [icon("star"), " No reviews yet"]),
           p.city ? el("p", { class: "city" }, icon("pin"), p.city) : null,

@@ -58,7 +58,7 @@ export async function reviewDialog(name) {
 
 /** A short required text (at least `min` characters). Resolves the text or null. */
 export async function textDialog(title, message, { okLabel = "Send", min = 10, placeholder = "" } = {}) {
-  const { ok, row } = buttons(okLabel, { disabled: true });
+  const { ok, row } = buttons(okLabel, { disabled: min > 0 });
   const input = el("textarea", { maxlength: 1000, rows: 4, placeholder, "aria-label": title });
   input.addEventListener("input", () => { ok.disabled = input.value.trim().length < min; });
   const { dialog } = shell(title, el("p", {}, message), input, row);

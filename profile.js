@@ -41,6 +41,11 @@ export function avatar(url, name, size = 44) {
   return el("span", { class: "avatar initials", "aria-hidden": "true", style: `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.38)}px` }, initials);
 }
 
+/** The silver Beta Tester star before @username (M90): beta testers, once verified. */
+export function betaStar(p) {
+  return p?.beta_badge_at && p.verified_at ? el("span", { class: "beta-badge", title: "Geerho Beta Tester", "aria-label": "Beta Tester" }, "★") : null;
+}
+
 /** A grouped-list row: colored icon, title, optional badge or value, chevron. */
 export function navRow(target, title, iconName, tint, { badge = null, value = null } = {}) {
   const href = target.includes(".html") ? target : `#${target}`;
@@ -96,7 +101,7 @@ async function renderHub() {
       avatar(p.avatar_url, p.display_name || p.username, 72),
       el("div", {},
         el("span", { class: "name" }, p.display_name || p.username, p.verified_at ? el("span", { "aria-label": "Verified" }, icon("seal", "icon verified-mark")) : null),
-        el("p", { class: "handle" }, `@${p.username}`),
+        el("p", { class: "handle" }, betaStar(p), `@${p.username}`),
         p.milestone_level ? el("span", { class: "pill on-brand" }, `Level ${p.milestone_level}`) : null,
         el("span", { class: "pill white" }, r?.total
           ? [icon("star", "icon star-fill"), ` ${Number(r.average).toFixed(1)} (${r.total})`]
@@ -117,6 +122,10 @@ async function renderHub() {
   const main = el("ul", { class: "group" }, MAIN_ROWS.map(([target, title, i, tint]) => navRow(target, title, i, tint)));
   const more = el("ul", { class: "group" }, MORE_ROWS.map(([target, title, i, tint]) =>
     navRow(target, title, i, tint, { value: target === "milestone" && p.milestone_level ? `Level ${p.milestone_level}` : null })));
+  // Beta Testing (M90): only for invited testers and Super Admins.
+  supabase.rpc("am_beta_member").then(({ data: isTester }) => {
+    if (isTester) more.prepend(navRow("beta.html", "Beta Testing", "seal", "gray"));
+  });
 
   hub.replaceChildren(...[
     el("div", { class: "title-row" }, el("h1", { class: "large-title" }, "Profile"), settings),
@@ -262,7 +271,7 @@ async function route() {
 export async function startProfile(user, profile, rerender) {
   me = user;
   rerenderAccount = rerender;
-  const { data } = await supabase.from("profiles").select("id, username, display_name, avatar_url, bio, city, verified_at, milestone_level").eq("id", user.id).single();
+  const { data } = await supabase.from("profiles").select("id, username, display_name, avatar_url, bio, city, verified_at, milestone_level, beta_badge_at").eq("id", user.id).single();
   myProfileRow = data ?? profile;
   if (!startProfile.wired) {
     startProfile.wired = true;
