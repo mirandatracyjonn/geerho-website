@@ -966,3 +966,18 @@ input.switch:checked::after { transform: translateX(20px); }
 .area-search { display: flex; gap: 8px; align-items: stretch; }
 .area-search input { flex: 1 1 auto; min-width: 0; width: auto !important; }
 .area-search button { flex: none; width: auto; padding-left: 18px; padding-right: 18px; }
+
+/* Square photo crop when posting (like the apps' SquareCropView) */
+.crop-dialog { width: min(560px, calc(100vw - 32px)); }
+.crop-frame { position: relative; width: 100%; aspect-ratio: 1 / 1; overflow: hidden; background: #000; border-radius: 12px; touch-action: none; cursor: grab; user-select: none; }
+.crop-frame:active { cursor: grabbing; }
+.crop-frame img { position: absolute; top: 50%; left: 50%; max-width: none; pointer-events: none; }
+.crop-grid { position: absolute; inset: 0; pointer-events: none; border: 2px solid #fff; border-radius: 12px;
+  background:
+    linear-gradient(to right, transparent calc(33.33% - 0.5px), rgba(255,255,255,.45) calc(33.33% - 0.5px), rgba(255,255,255,.45) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(255,255,255,.45) calc(66.66% - 0.5px), rgba(255,255,255,.45) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(33.33% - 0.5px), rgba(255,255,255,.45) calc(33.33% - 0.5px), rgba(255,255,255,.45) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(255,255,255,.45) calc(66.66% - 0.5px), rgba(255,255,255,.45) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)); }
+.crop-dialog input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+/* Listing photos fill their square (TJ 2026-10-14: no photo shown small inside a blurred square). */
+.gallery-photo { object-fit: cover; }
+.gallery-backdrop { display: none; }

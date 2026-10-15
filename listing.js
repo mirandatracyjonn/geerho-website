@@ -10,15 +10,14 @@ const status = document.getElementById("status");
 const article = document.getElementById("listing");
 const id = new URLSearchParams(location.search).get("id");
 
-// Photos: a swipeable square strip (scroll-snap) with arrows, a "2 / 5" counter, and thumbnails. Each photo is shown
-// whole over a soft blurred copy of itself, so tall and wide photos fill the square without cropping.
+// Photos: a swipeable square strip (scroll-snap) with arrows, a "2 / 5" counter, and thumbnails. Each photo fills the
+// square (new photos are cropped square when posted; older ones are centered), like the apps.
 function gallery(photos) {
   const sorted = [...photos].sort((a, b) => a.position - b.position);
   if (!sorted.length) return el("div", { class: "gallery" }, el("div", { class: "gallery-main" }, el("span", { class: "no-photo" }, "No photo")));
   const urls = sorted.map((photo) => photoURL(photo.storage_path));
   const track = el("ul", { class: "gallery-track", "aria-label": "Photos", tabindex: "0" }, urls.map((url, index) =>
     el("li", { class: "gallery-slide" },
-      el("img", { class: "gallery-backdrop", src: url, alt: "", "aria-hidden": "true", loading: index ? "lazy" : "eager" }),
       el("img", { class: "gallery-photo", src: url, alt: `Photo ${index + 1} of ${urls.length}`, loading: index ? "lazy" : "eager" }))));
   const counter = el("span", { class: "gallery-count", "aria-hidden": "true" }, `1 / ${urls.length}`);
   const show = (index) => track.scrollTo({ left: index * track.clientWidth, behavior: "smooth" });

@@ -115,27 +115,106 @@ function descriptionEditor(value) {
 // --- Photos -------------------------------------------------------------------------------------------------------
 
 /** Resizes to at most 1600 px on the long side as a JPEG (like the apps); this also drops the photo's location data. */
-async function prepare(file) {
+async function prepare(file, crop = null) {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  if (crop) {
+    // The square the member chose (fractions of the image): listing photos are square (TJ 2026-10-14).
+    const side = Math.max(1, Math.round(crop.side * bitmap.width));
+    const out = Math.min(side, 1600);
+    canvas.width = canvas.height = out;
+    canvas.getContext("2d").drawImage(bitmap, Math.round(crop.left * bitmap.width), Math.round(crop.top * bitmap.height), side, side, 0, 0, out, out);
+  } else {
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  }
   const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("photo"))), "image/jpeg", 0.8));
   return { blob, width: canvas.width, height: canvas.height };
+}
+
+/** The square crop (same as the apps' SquareCropView): the photo fills a square, centered; drag to move, zoom with the
+ *  slider, a pinch, or the mouse wheel; Use Photo. Resolves { spec: {left, top, side} as fractions, preview } or null. */
+export function cropDialog(file, position, total) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = el("img", { src: url, alt: "Photo to crop", draggable: "false" });
+    const frame = el("div", { class: "crop-frame" }, img, el("div", { class: "crop-grid", "aria-hidden": "true" }));
+    const zoomInput = el("input", { type: "range", min: "1", max: "4", step: "0.01", value: "1", "aria-label": "Zoom" });
+    const use = el("button", { type: "button" }, "Use Photo");
+    const cancel = el("button", { type: "button", class: "secondary" }, "Cancel");
+    const dialog = el("dialog", { class: "g-dialog crop-dialog", "aria-label": "Crop photo" },
+      el("h2", {}, total > 1 ? `Photo ${position} of ${total}` : "Crop Photo"), frame,
+      el("p", { class: "form-hint" }, "Drag to center your item. Zoom to fill the square."), zoomInput,
+      el("div", { class: "g-dialog-actions" }, cancel, use));
+    document.body.append(dialog);
+    let w = 1, h = 1, side = 1, zoom = 1, ox = 0, oy = 0;
+    const fill = () => side / Math.min(w, h);
+    const clamp = () => {
+      const s = fill() * zoom, maxX = Math.max((w * s - side) / 2, 0), maxY = Math.max((h * s - side) / 2, 0);
+      ox = Math.min(Math.max(ox, -maxX), maxX); oy = Math.min(Math.max(oy, -maxY), maxY);
+    };
+    const draw = () => {
+      const s = fill() * zoom;
+      img.style.width = `${w * s}px`; img.style.height = `${h * s}px`;
+      img.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`;
+    };
+    img.addEventListener("load", () => {
+      w = img.naturalWidth; h = img.naturalHeight; side = frame.clientWidth; clamp(); draw();
+    });
+    const pointers = new Map();
+    let pinchStart = 0, zoomStart = 1;
+    frame.addEventListener("pointerdown", (e) => { frame.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchStart = Math.hypot(a.x - b.x, a.y - b.y); zoomStart = zoom; } });
+    frame.addEventListener("pointermove", (e) => {
+      const last = pointers.get(e.pointerId);
+      if (!last) return;
+      if (pointers.size === 2) {
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const [a, b] = [...pointers.values()];
+        zoom = Math.min(Math.max(zoomStart * Math.hypot(a.x - b.x, a.y - b.y) / (pinchStart || 1), 1), 4);
+        zoomInput.value = zoom;
+      } else {
+        ox += e.clientX - last.x; oy += e.clientY - last.y;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+      clamp(); draw();
+    });
+    const up = (e) => pointers.delete(e.pointerId);
+    frame.addEventListener("pointerup", up);
+    frame.addEventListener("pointercancel", up);
+    frame.addEventListener("wheel", (e) => { e.preventDefault(); zoom = Math.min(Math.max(zoom * (e.deltaY < 0 ? 1.08 : 0.92), 1), 4); zoomInput.value = zoom; clamp(); draw(); }, { passive: false });
+    zoomInput.addEventListener("input", () => { zoom = Number(zoomInput.value); clamp(); draw(); });
+    const finish = (result) => { dialog.close(); dialog.remove(); if (!result) URL.revokeObjectURL(url); resolve(result); };
+    cancel.addEventListener("click", () => finish(null));
+    dialog.addEventListener("cancel", (e) => { e.preventDefault(); finish(null); });
+    use.addEventListener("click", async () => {
+      const s = fill() * zoom, length = side / s;
+      const cx = w / 2 - ox / s, cy = h / 2 - oy / s;
+      const spec = { left: (cx - length / 2) / w, top: (cy - length / 2) / h, side: length / w };
+      // A small square preview for the photo strip.
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 300;
+      canvas.getContext("2d").drawImage(img, cx - length / 2, cy - length / 2, length, length, 0, 0, 300, 300);
+      finish({ spec, preview: canvas.toDataURL("image/jpeg", 0.85) });
+    });
+    dialog.showModal();
+  });
 }
 
 function photoPicker(state, onChange) {
   const grid = el("div", { class: "photo-grid" });
   const input = el("input", { type: "file", accept: "image/*", multiple: true, class: "sr-only", id: "post-photos" });
-  input.addEventListener("change", () => {
-    for (const file of [...(input.files ?? [])]) {
-      if (state.photos.length >= MAX_PHOTOS) break;
-      state.photos.push({ file, url: URL.createObjectURL(file) });
-    }
+  input.addEventListener("change", async () => {
+    const files = [...(input.files ?? [])].slice(0, MAX_PHOTOS - state.photos.length);
     input.value = "";
-    draw();
+    // Each new photo: a square crop, centered; drag to move, zoom; Use Photo (like the apps).
+    for (const [index, file] of files.entries()) {
+      const crop = await cropDialog(file, index + 1, files.length);
+      if (!crop) break;
+      state.photos.push({ file, url: crop.preview, crop: crop.spec });
+      draw();
+    }
     onChange();
   });
   function draw() {
@@ -470,7 +549,7 @@ export async function postForm(root, typeKey, { editId = null, me }) {
       for (const [index, p] of state.photos.entries()) {
         if (p.stored) continue;
         say(`Uploading photo ${index + 1} of ${state.photos.length}…`);
-        const prepared = await prepare(p.file);
+        const prepared = await prepare(p.file, p.crop);
         const path = `${me.id}/${id}/${crypto.randomUUID()}.jpg`;
         const { error } = await bucket.upload(path, prepared.blob, { contentType: "image/jpeg", upsert: true });
         if (error) throw new Error("A photo couldn't be uploaded. Check your connection and try again.");
