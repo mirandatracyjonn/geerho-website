@@ -1083,3 +1083,4 @@ button.small { min-height: 34px; padding: 6px 14px; font-size: 0.9rem; }
 .handbook table { border-collapse: collapse; width: 100%; display: block; overflow-x: auto; }
 .handbook th, .handbook td { border: 1px solid var(--rule); padding: 6px 8px; text-align: left; vertical-align: top; }
 .center { text-align: center; }
+.overdue-links { display: flex; flex-wrap: wrap; gap: 6px 16px; }

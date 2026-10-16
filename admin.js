@@ -816,7 +816,13 @@ async function overdueRentals() {
     el("div", { class: "split" }, el("strong", {}, r.listing_title), el("strong", { class: "bad-text" }, `${r.days_late} ${r.days_late === 1 ? "day" : "days"} late`)),
     el("p", {}, `Due ${dateOnly(r.end_date)} · deposit ${usd(r.deposit_cents)}`),
     el("p", { class: "hint" }, `Owner ${at(r.owner_username, "deleted")} · renter ${at(r.renter_username, "deleted")}`),
-    el("p", { class: "mono" }, r.reference)))) : empty("calendar", "No overdue rentals"));
+    el("p", { class: "mono" }, r.reference),
+    // The listing and both members (M110), to follow up.
+    el("p", { class: "overdue-links" },
+      r.listing_id ? el("a", { href: `listing.html?id=${encodeURIComponent(r.listing_id)}` }, "View Listing") : null,
+      r.owner_id ? el("a", { href: `member.html?id=${encodeURIComponent(r.owner_id)}` }, `Owner ${at(r.owner_username, "")}`) : null,
+      r.renter_id ? el("a", { href: `member.html?id=${encodeURIComponent(r.renter_id)}` }, `Renter ${at(r.renter_username, "")}`) : null)))) : empty("calendar", "No overdue rentals"),
+    cache.overdue.length ? hint("To contact the owner or renter through Geerho Support, open their profile in the app (Moderator Tools).") : null);
 }
 
 // The handbook is HTML written by Geerho (generated from the Bible into a migration); only safe tags are kept.
