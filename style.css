@@ -1042,3 +1042,44 @@ input.switch:checked::after { transform: translateX(20px); }
 .mfa-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
 .mfa-row label { margin: 0; flex: 1; min-width: 0; font-weight: 400; }
 .mfa-sub { display: block; margin-top: 16px; }
+
+/* Admin Dashboard (admin.html, 2026-10-16): the app's stat cards, labeled rows, and review screens. */
+.admin-title { margin: 8px 0 12px; font-size: 1.6rem; }
+.row.stat { align-items: center; min-height: 72px; }
+.stat-text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 1px; }
+.stat-title { color: var(--muted); font-size: 0.9rem; }
+.stat-value { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-detail { color: var(--muted); font-size: 0.8rem; }
+.row-stack { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
+.row-stack .row-title { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.row .row-lead { width: 20px; height: 20px; color: var(--link); flex: none; }
+.kv { display: flex; justify-content: space-between; gap: 16px; padding: 11px 16px; }
+.kv-label { color: var(--text); flex: none; }
+.kv-value { color: var(--muted); text-align: right; overflow-wrap: anywhere; user-select: text; }
+.group > li.kv + li::before, .group > li + li.kv::before { left: 16px; }
+.decision { display: grid; gap: 10px; background: var(--cell); border-radius: 12px; padding: 14px 16px; margin: 0 0 18px; }
+.decision textarea, .decision input[type="datetime-local"] { width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.decision label { margin: 0; }
+.decision label input[type="datetime-local"] { margin-top: 6px; }
+.split { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.split strong:last-child { flex: none; font-variant-numeric: tabular-nums; }
+.cell-pad p { margin: 4px 0 0; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; color: var(--muted); user-select: text; }
+.bad-text { color: var(--bad); }
+.quote { background: var(--grouped); border-radius: 8px; padding: 8px 10px; white-space: pre-line; overflow-wrap: anywhere; }
+.report-head { display: flex; gap: 12px; align-items: flex-start; }
+.report .actions { margin-top: 10px; }
+.pill.good-pill { background: color-mix(in srgb, #34c759 18%, transparent); color: #1f8a3b; }
+.pill.danger-pill { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+.pill.warn-pill { background: color-mix(in srgb, #ff9500 18%, transparent); color: #b35f00; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+button.small { min-height: 34px; padding: 6px 14px; font-size: 0.9rem; }
+.filter-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
+.filter-chip { flex: none; min-height: 34px; padding: 6px 12px; border-radius: 999px; border: 0; font-size: 0.9rem; font-weight: 600; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.filter-chip[aria-pressed="true"] { background: linear-gradient(135deg, #7389ff, #4557ed); color: #fff; }
+.admin-search { margin: 0 0 12px; }
+.admin-thread { max-height: none; padding: 0 0 12px; }
+.admin-thread .group { margin: 6px 0 0; }
+.handbook { background: var(--cell); border-radius: 12px; padding: 4px 18px 18px; overflow-wrap: anywhere; }
+.handbook table { border-collapse: collapse; width: 100%; display: block; overflow-x: auto; }
+.handbook th, .handbook td { border: 1px solid var(--rule); padding: 6px 8px; text-align: left; vertical-align: top; }
+.center { text-align: center; }

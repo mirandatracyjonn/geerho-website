@@ -69,6 +69,17 @@ export function screenHead(title, { back = "#", backLabel = "Profile", action = 
     action ? el("div", { class: "head-action" }, action) : null);
 }
 
+/** Settings → Moderation, like the app's: only for moderators and Super Admins. */
+async function showModeration() {
+  const { data: role } = await supabase.rpc("my_moderation_role");
+  const box = document.getElementById("moderation-group");
+  if (!box || !role) return;
+  document.getElementById("moderation-title").textContent = role === "owner" ? "Moderation · Super Admin" : "Moderation";
+  box.hidden = false;
+  const { data: queue } = await supabase.rpc("moderation_queue");
+  document.getElementById("review-count").textContent = queue?.length ? String(queue.length) : "";
+}
+
 async function counts(userId) {
   const now = new Date().toISOString();
   const [orders, rentals, tours, jobs, bids] = await Promise.all([
@@ -265,6 +276,7 @@ async function route() {
     settings.hidden = false;
     document.title = "Settings · Geerho";
     const security = document.getElementById("security-cell");
+    showModeration();
     import("./mfa.js").then(({ renderSecurity }) => renderSecurity(security))
       .then(() => { if (name === "security") security.scrollIntoView({ block: "start" }); });
     if (name === "verify") document.getElementById("verification").closest("li").scrollIntoView({ block: "center" });

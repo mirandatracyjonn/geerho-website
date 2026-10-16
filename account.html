@@ -173,6 +173,15 @@
         <li class="cell-pad"><strong>Identity Verification</strong><div id="verification"></div></li>
         <li><a class="row" href="#blocked"><span class="row-title">Blocked Users</span></a></li>
       </ul>
+      <!-- Moderators and Super Admins only (profile.js shows it); the database checks every action again. -->
+      <div id="moderation-group" hidden>
+        <p class="group-title" id="moderation-title">Moderation</p>
+        <ul class="group plain">
+          <li><a class="row" href="admin.html"><span class="row-title">Admin Dashboard</span></a></li>
+          <li><a class="row" href="admin.html#reports"><span class="row-title">Review Queue</span><span class="row-value" id="review-count"></span></a></li>
+          <li><a class="row" href="admin.html#handbook"><span class="row-title">Handbook</span></a></li>
+        </ul>
+      </div>
       <p class="group-title">Help</p>
       <ul class="group plain">
         <li><a class="row" href="help.html"><span class="row-title">User Handbook</span></a></li>
