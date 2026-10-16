@@ -58,5 +58,9 @@ if (user) {
     } else if (!status.textContent) {
       status.textContent = `You're on the free plan: ${data.posts_today} of 1 new post used today.`;
     }
+    // The weekly unlimited posting day (M107).
+    if (data.unlimited_today && data.unlimited_day) {
+      status.textContent = `It's Unlimited ${data.unlimited_day}: post as much as you like today. Today's posts don't count toward your limits.`;
+    }
   }
 }
