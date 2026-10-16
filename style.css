@@ -1029,7 +1029,7 @@ input.switch:checked::after { transform: translateX(20px); }
 
 /* Two-step verification (M98) */
 .mfa-dialog { width: min(440px, calc(100vw - 32px)); }
-.mfa-dialog input, #security-cell input { width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+.mfa-dialog input, #security-cell input:not(.switch) { width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
 .mfa-code { font-size: 1.6rem !important; letter-spacing: 0.3em; text-align: center; font-variant-numeric: tabular-nums; }
 .mfa-dialog > button, .mfa-dialog > input { margin-top: 10px; width: 100%; }
 .mfa-links { display: flex; justify-content: space-between; margin-top: 14px; }
@@ -1040,5 +1040,5 @@ input.switch:checked::after { transform: translateX(20px); }
 .mfa-recovery { columns: 2; padding-left: 22px; font-size: 1rem; }
 .mfa-recovery code { font-size: 1rem; }
 .mfa-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
-.mfa-row label { margin: 0; }
+.mfa-row label { margin: 0; flex: 1; min-width: 0; font-weight: 400; }
 .mfa-sub { display: block; margin-top: 16px; }
