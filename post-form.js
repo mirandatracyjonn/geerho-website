@@ -32,6 +32,10 @@ const EDIT_COLUMNS = "id, kind, listing_format, status, category_id, title, desc
 
 // --- Elite teams (M46): a team member's new posts belong to the Elite; the server records who posted them. -------------
 
+/** What members are told about plans and homes (M111), the same on iOS, Android, and the website. */
+const HOME_NEEDS_PLAN = "Listing a home for sale or for rent needs a Basic, Pro, or Elite plan. Free members keep posting items as before. "
+  + "Your home is saved as a draft: choose a plan, then publish it from Profile → My Listings. Your plan continues until you cancel it.";
+
 let teamCache;
 /** The Elite team I'm on (active, and its owner still has Elite), like the app's TeamStore.activeTeam. */
 export async function activeTeam() {
@@ -405,7 +409,7 @@ export async function postForm(root, typeKey, { editId = null, me }) {
       field(`How far you'll lend it (${metric() ? "km" : "miles"})`, radius)) : null,
     isHome ? section(typeKey === "home_rent" ? "Rent" : "Price", field(typeKey === "home_rent" ? "Monthly rent" : "Asking price", price),
       el("div", { class: "form-row" }, el("span", { class: "form-label" }, "You are the"), role, roleHint,
-        el("small", { class: "form-hint" }, "Listing a home needs Basic, Pro, or Elite (Profile → Plan). On Basic, your plan ends by itself once none of your homes are listed.")),
+        el("small", { class: "form-hint" }, "Listing a home needs Basic, Pro, or Elite (Profile → Plan). Without one, you can save your home as a draft and publish it after you choose a plan.")),
       el("div", { class: "two-col" }, field("Bedrooms", bedrooms), field("Bathrooms", bathrooms)),
       field(`Floor area (${metric() ? "m²" : "sq ft"})`, floor),
       typeKey === "home_rent" ? [field("Security deposit (optional)", securityDeposit), field("Lease length (months)", lease)] : null) : null,
@@ -602,7 +606,26 @@ export async function postForm(root, typeKey, { editId = null, me }) {
       publishButton.textContent = editingLive ? "Save Changes" : "Publish";
     }
   }
-  publishButton.addEventListener("click", () => save(true));
+  // Homes need a plan (M111): a free member confirms, the home is saved as a draft, and the plans open.
+  async function askForPlan(alreadySaved) {
+    const { confirmDialog } = await import("./ui-dialog.js");
+    if (!(await confirmDialog("Choose a plan to list your home", HOME_NEEDS_PLAN, "Save as Draft and See Plans"))) return;
+    if (!alreadySaved) await save(false);
+    if (state.savedId) location.href = "plans.html";
+  }
+  publishButton.addEventListener("click", async () => {
+    // Team members posting for an Elite use the Elite's plan.
+    if (isHome && !editingLive && !row && !(postsForTeam() && await activeTeam())) {
+      const { data } = await supabase.rpc("my_plan");
+      if (data?.plan === "free") return askForPlan(false);
+    }
+    await save(true);
+    // The database said no after saving the draft (for example, a draft opened from My Listings).
+    if (isHome && messages.textContent.startsWith("Listing a home for sale or for rent needs") && state.savedId) {
+      messages.hidden = true;
+      askForPlan(true);
+    }
+  });
   draftButton.addEventListener("click", () => save(false));
 }
 
