@@ -114,9 +114,13 @@ export async function auctionPanel(listing) {
   let timer = null, poll = null;
   const cur = listing.currency;
 
+  let knownEnds = listing.auction_ends_at ? new Date(listing.auction_ends_at) : null;
   async function draw(message) {
+    // Time's up: ask the server to close due auctions first, like the app, so the winner shows right away.
+    if (knownEnds && knownEnds <= new Date()) await supabase.rpc("finalize_due_auctions").then(() => {}, () => {});
     const { data } = await supabase.rpc("auction_status", { listing: listing.id });
     const a = data?.[0];
+    if (a?.auction_ends_at) knownEnds = new Date(a.auction_ends_at);
     clearInterval(timer);
     if (!a) { panel.replaceChildren(); return; }
     const ends = a.auction_ends_at ? new Date(a.auction_ends_at) : null;
@@ -135,7 +139,19 @@ export async function auctionPanel(listing) {
     // The final 2 minutes (like eBay): a red banner with a big mm:ss timer, and the bids re-checked every 5 seconds.
     const finalClock = el("span", { class: "au-final-clock", role: "timer", "aria-live": "off" });
     const final = el("div", { class: "au-final", hidden: true }, el("span", { class: "au-final-label" }, "Ending soon · bid now"), finalClock);
-    panel.replaceChildren(head, final, time);
+    // Bid history (the app's sheet): bidders shown by their masked name; yours and the leading bid are marked.
+    const history = bids ? el("details", { class: "au-history" }, el("summary", {}, `Bid history (${bids})`)) : null;
+    history?.addEventListener("toggle", async () => {
+      if (!history.open || history.dataset.loaded) return;
+      history.dataset.loaded = "1";
+      const { data: rows } = await supabase.rpc("auction_bid_history", { listing: listing.id });
+      history.append(el("ul", { class: "au-history-list" }, ...(rows ?? []).map((r) => el("li", {},
+        el("span", {}, r.is_me ? "You" : r.bidder), " ",
+        el("strong", {}, money(r.amount_cents, cur)),
+        r.is_leading ? el("span", { class: "state good" }, " · leading") : "",
+        el("small", { class: "hint" }, ` · ${new Date(r.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`)))));
+    });
+    panel.replaceChildren(head, final, time, ...(history ? [history] : []));
     if (live) {
       let lastFastCheck = Date.now();
       const tick = () => {

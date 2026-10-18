@@ -1097,3 +1097,27 @@ details > summary { cursor: pointer; padding: 10px 16px; color: var(--link); fon
 .seat-badge.gold { background: linear-gradient(135deg, #f7d774, #d4a017); color: #3f2e00; }
 .wrap-actions { flex-wrap: wrap; margin: 0 0 16px; }
 .live-moderator { display: grid; gap: 10px; margin: 16px 0; } .live-moderator input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--field); color: var(--text); }
+.au-history { margin-top: 10px; } .au-history-list { list-style: none; padding: 0 12px; margin: 6px 0; display: grid; gap: 6px; }
+.bubble.deleted p { font-style: italic; opacity: 0.6; }
+.bubble-actions { display: none; gap: 10px; font-size: 0.8rem; }
+.bubble:hover .bubble-actions, .bubble:focus-within .bubble-actions { display: flex; }
+@media (hover: none) { .bubble-actions { display: flex; } }
+.ticket-row { display: flex; align-items: center; gap: 8px; } .ticket-row > a { flex: 1; min-width: 0; } .ticket-action { flex: none; padding: 0 10px; } .recently-deleted ul { list-style: none; padding: 0 0 0 12px; margin: 0; }
+.transfer-code { font-family: ui-monospace, Menlo, monospace; font-size: 1.6rem; font-weight: 800; letter-spacing: 0.12em; text-align: center; margin: 4px 0; }
+.web-live .panel { display: grid; gap: 10px; margin: 18px 0; } .web-live input[type=url], .web-live input[type=text], .web-live select { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--field); color: var(--text); } .live-picks { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 14px; display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+.chat-media img { max-width: min(280px, 100%); border-radius: 12px; display: block; }
+.chat-media video { max-width: min(320px, 100%); border-radius: 12px; display: block; }
+.bubble.sticker { background: none !important; box-shadow: none; }
+.bubble.sticker .chat-media img { max-width: 140px; }
+.chat-location { font-weight: 600; }
+.reactions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; }
+.reaction { background: color-mix(in srgb, var(--text) 8%, transparent); border-radius: 999px; padding: 1px 8px; font-size: 0.85rem; }
+.reaction.mine { outline: 1.5px solid var(--accent); }
+.react-add { font-size: 0.85rem; opacity: 0.6; }
+.react-picker { display: inline-flex; gap: 2px; background: var(--cell); border-radius: 999px; padding: 2px 6px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.react-picker[hidden] { display: none; }
+.react-choice { background: none; border: 0; font-size: 1.15rem; padding: 2px 3px; min-height: 0; cursor: pointer; }
+.composer-tools { display: flex; gap: 8px; }
+.composer-tool { min-height: 36px; padding: 6px 12px; font-size: 0.9rem; cursor: pointer; }
+.composer-tool.busy { opacity: 0.5; pointer-events: none; }
+.pin-box .panel { display: grid; gap: 8px; margin: 12px 0; } .pin-box input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--field); color: var(--text); }

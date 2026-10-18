@@ -322,7 +322,7 @@ function standing(l) {
 
 async function listings(ctx) {
   const { data, error } = await supabase.from("listings")
-    .select("id, title, price_cents, currency, kind, listing_format, status, expires_at, hidden_at, auction_state, current_bid_cents, bid_count, rate_type, listing_photos(storage_path, position)")
+    .select("id, title, price_cents, currency, kind, listing_format, status, expires_at, hidden_at, auction_state, current_bid_cents, bid_count, rate_type, offers_pickup, offers_shipping, shipping_carriers, shipping_fee_cents, listing_photos(storage_path, position)")
     .eq("seller_id", ctx.me.id).order("created_at", { ascending: false }).limit(200);
   if (error) throw error;
   const tab = ctx.state.listingsTab ?? "active";
@@ -338,6 +338,7 @@ async function listings(ctx) {
       actionsBar(
         ["draft", "active"].includes(l.status) ? el("a", { class: "button secondary", href: `post.html?edit=${l.id}` }, "Edit") : null,
         l.status === "draft" ? button("Publish", confirmThen(ctx, "Publish this listing?", "People nearby can see it for 60 days.", "Publish", update({ status: "active" }))) : null,
+        l.status === "active" && l.listing_format !== "auction" && ["item", "property_sale"].includes(l.kind) ? button("Mark as Sold", () => openMarkSold(ctx, l)) : null,
         l.status === "sold" ? button("Mark as Available", confirmThen(ctx, "Mark as available?", "It shows on Geerho again.", "Yes", update({ status: "active" }))) : null,
         expired ? button("Renew for 60 Days", confirmThen(ctx, "Renew for 60 days?", "It shows on Geerho again for 60 days.", "Renew", () => supabase.rpc("renew_listing", { listing_id: l.id }))) : null,
         l.listing_format === "auction" && l.auction_state === "live" && !l.bid_count
@@ -355,6 +356,50 @@ async function listings(ctx) {
   ];
 }
 
+/** "Mark as Sold" (the app's MarkSoldSheet): who bought it and how it gets to them. */
+async function openMarkSold(ctx, l) {
+  const { data: conversations } = await supabase.rpc("my_conversations");
+  const candidates = (conversations ?? []).filter((c) => c.listing_id === l.id && c.i_am_seller && c.other_user_id);
+  const buyer = el("select", { "aria-label": "Buyer" }, el("option", { value: "" }, "Choose"),
+    ...candidates.map((c) => el("option", { value: c.other_user_id }, c.other_display_name || `@${c.other_username}`)),
+    el("option", { value: "elsewhere" }, "Someone else / not on Geerho"));
+  const methods = [...(l.offers_pickup ? [["pickup", "Local pickup"]] : []), ...(l.offers_shipping ? [["shipping", "Shipping"]] : []), ["other", "Other"]];
+  const delivery = el("select", { "aria-label": "Delivery" }, ...methods.map(([v, t]) => el("option", { value: v }, t)));
+  const carrier = el("select", { "aria-label": "Carrier" }, el("option", { value: "" }, "Choose"),
+    ...(l.shipping_carriers ?? []).map((c) => el("option", { value: c }, CARRIERS[c] ?? c)));
+  const fee = l.shipping_fee_cents ?? 0;
+  const carrierBox = el("div", { hidden: true }, el("label", {}, "Carrier", carrier),
+    el("p", { class: "group-footer" }, fee > 0
+      ? `The buyer pays ${money(fee, l.currency)} shipping & handling. Add the tracking number within 3 business days, or the sale is flagged.`
+      : "Free shipping. Adding a tracking number is optional."));
+  const save = el("button", { type: "button", disabled: true }, "Mark as Sold");
+  const problem = el("p", { class: "status bad", role: "alert", hidden: true });
+  const check = () => {
+    carrierBox.hidden = delivery.value !== "shipping";
+    save.disabled = !buyer.value || (delivery.value === "shipping" && !carrier.value);
+  };
+  [buyer, delivery, carrier].forEach((x) => x.addEventListener("change", check)); check();
+  save.addEventListener("click", async () => {
+    save.disabled = true; problem.hidden = true;
+    const params = { listing: l.id, delivery: delivery.value };
+    if (buyer.value !== "elsewhere") params.buyer = buyer.value;
+    if (delivery.value === "shipping") params.carrier = carrier.value;
+    const { error } = await supabase.rpc("mark_listing_sold", params);
+    if (error) { problem.textContent = friendlyError(error); problem.hidden = false; save.disabled = false; return; }
+    ctx.reload();
+  });
+  const cancel = el("button", { type: "button", class: "secondary" }, "Cancel");
+  const form = el("div", { class: "decision" }, el("strong", {}, `Mark “${l.title}” as sold`),
+    el("label", {}, "Who bought it?", buyer),
+    candidates.length ? null : el("p", { class: "group-footer" }, "People who message you about this listing appear here."),
+    el("label", {}, "How is it getting to them?", delivery), carrierBox, problem, el("div", { class: "actions" }, save, cancel));
+  cancel.addEventListener("click", () => form.remove());
+  document.querySelector(".decision.mark-sold")?.remove();
+  form.classList.add("mark-sold");
+  document.querySelector("main")?.prepend(form);
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 // --- Watching (WatchingView) and Favorites -------------------------------------------------------------------------
 
 function listingLine(l) {
@@ -363,10 +408,17 @@ function listingLine(l) {
 }
 
 async function watching(ctx) {
-  const { data, error } = await supabase.rpc("my_watches");
+  const [{ data, error }, { data: alerts }] = await Promise.all([supabase.rpc("my_watches"),
+    supabase.from("watch_alerts").select("id, listing_id, kind, message, created_at, read_at").order("created_at", { ascending: false }).limit(10)]);
   if (error) throw error;
-  if (!(data ?? []).length) return [empty("eye", "Nothing watched yet", "Tap the eye on any listing to watch it. You get an alert when the price drops, an auction is ending, or it sells.")];
-  return [group(data.map((w) => el("div", { class: "item" },
+  // Alerts first, like the app; opening Watching marks them read.
+  const alertRows = (alerts ?? []).map((a) => el("a", { class: "item-row", href: `listing.html?id=${a.listing_id}` },
+    el("span", { class: "row-title" }, el("strong", {}, a.message), el("small", {}, `${a.read_at ? "" : "New · "}${new Date(a.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`)),
+    icon("chevronRight", "chev")));
+  if ((alerts ?? []).some((a) => !a.read_at)) supabase.rpc("mark_watch_alerts_read").then(() => {}, () => {});
+  const alertSection = alertRows.length ? group(alertRows, "Alerts") : null;
+  if (!(data ?? []).length) return [alertSection, empty("eye", "Nothing watched yet", "Tap the eye on any listing to watch it. You get an alert when the price drops, an auction is ending, or it sells.")];
+  return [alertSection, group(data.map((w) => el("div", { class: "item" },
     itemRow(`listing.html?id=${w.id}`, w.cover_path, w.title, listingLine(w),
       w.status !== "active" ? (w.status === "sold" ? "Sold" : "No longer available")
         : w.listing_format === "auction" && w.auction_ends_at ? `Ends ${until(w.auction_ends_at)}` : [w.city, w.region].filter(Boolean).join(", "),
@@ -554,10 +606,12 @@ async function jobs(ctx) {
   const all = data ?? [];
   if (!all.length) return [empty("briefcase", "No jobs yet", "Your responses to jobs, and responses to jobs you post, show up here.")];
   const hired = all.filter((r) => r.status === "accepted").map((r) => r.id);
-  const [{ data: pays }, { data: done }] = hired.length ? await Promise.all([
+  const [{ data: pays }, { data: done }, { data: myReviews }] = hired.length ? await Promise.all([
     supabase.from("payments").select("job_response_id, status").in("job_response_id", hired),
     supabase.from("job_responses").select("id, work_done_at").in("id", hired),
-  ]) : [{ data: [] }, { data: [] }];
+    supabase.from("reviews").select("job_response_id").eq("reviewer_id", me).in("job_response_id", hired),
+  ]) : [{ data: [] }, { data: [] }, { data: [] }];
+  const jobReviewed = new Set((myReviews ?? []).map((x) => x.job_response_id));
   const payFor = Object.fromEntries((pays ?? []).map((p) => [p.job_response_id, p.status]));
   const doneAt = Object.fromEntries((done ?? []).filter((d) => d.work_done_at).map((d) => [d.id, d.work_done_at]));
   const label = { sent: "Sent", accepted: "Hired", declined: "Not chosen", withdrawn: "Withdrawn" };
@@ -599,6 +653,16 @@ async function jobs(ctx) {
       if (doneAt[r.id]) parts.push(el("p", { class: "state info" }, `You marked the job done ${dayTime(doneAt[r.id])}${pay === "released" ? "." : ". Waiting for your client to confirm (or 3 days)."}`));
       else if (!pay || ["held", "awaiting_payment", "canceled"].includes(pay)) buttons.push(button("Job Done", confirmThen(ctx, "Mark the job done?", "The client is asked to confirm; you're paid when they do (or after 3 days).", "Yes", () => act("mark_job_done", r.id))));
       if (pay === "held" || pay === "authorized") buttons.push(button("Refund Client", confirmThen(ctx, "Refund your client?", "They get their full payment back, and you won't be paid for this job through Geerho.", "Refund", () => act("refund_job_payment", r.id), { danger: true }), "secondary"));
+    }
+    // Hired jobs: the client and the pro review each other (M32), within 60 days of the hire; blind until both review.
+    if (r.status === "accepted" && !jobReviewed.has(r.id)) {
+      buttons.push(button(client ? "Review Your Pro" : "Review the Client", async () => {
+        const result = await reviewDialog(client ? name : "the client");
+        if (!result) return;
+        const { error: e } = await supabase.rpc("leave_job_review", { response: r.id, rating: result.rating, body: result.body || null });
+        if (e) return ctx.fail(friendlyError(e));
+        ctx.reload();
+      }, "secondary"));
     }
     parts.push(actionsBar(...buttons));
     return el("div", { class: "item" }, ...parts);
@@ -787,7 +851,7 @@ async function licenseForm(ctx) {
   ];
 }
 
-async function milestone() {
+async function milestone(ctx) {
   const { data: m, error } = await supabase.rpc("my_milestone", { display_currency: "USD" });
   if (error) throw error;
   const span = Math.max(1, (m.next_level_floor ?? 1) - (m.level_floor ?? 0));
@@ -799,7 +863,42 @@ async function milestone() {
       el("div", { style: `width:${progress}%;height:100%;background:#fff` })),
     el("span", {}, `${m.xp_to_next.toLocaleString()} points to Level ${m.level + 1}`)),
     el("p", { class: "group-footer", style: "margin-top:0" }, "You earn points for each dollar you buy and sell on Geerho. Higher levels show on your profile."),
-    m.transferred_at ? el("p", { class: "group-footer" }, "Your TikTok level was transferred.") : null];
+    m.transferred_at ? el("p", { class: "group-footer" }, "Your TikTok level was transferred.") : transferSection(ctx, m)];
+}
+
+// TikTok level transfer (the app's LevelTransferSheet): get a code, send it to @aceallen82 on TikTok, we approve it.
+const TIKTOK_HANDLE = "aceallen82";
+function transferSection(ctx, m) {
+  const pending = m.request?.status === "pending" ? m.request : null;
+  if (pending) {
+    return [el("p", { class: "group-title" }, "TikTok level transfer"),
+      el("div", { class: "decision" },
+        el("strong", { class: "state warn" }, "Waiting for review"),
+        el("p", {}, `Send this code to @${TIKTOK_HANDLE} in a TikTok message from @${pending.tiktok_username}. We'll check your gifter level (Level ${pending.requested_level}) and approve it, usually within 24 hours.`),
+        el("p", { class: "transfer-code" }, pending.code),
+        el("a", { class: "button secondary", href: `https://www.tiktok.com/@${TIKTOK_HANDLE}`, target: "_blank", rel: "noopener" }, `Open @${TIKTOK_HANDLE} on TikTok`),
+        actionsBar(button("Cancel This Transfer", confirmThen(ctx, "Cancel this transfer?", "You can start a new one later.", "Cancel Transfer", () => supabase.rpc("cancel_level_transfer"), { danger: true }), "secondary")))];
+  }
+  const username = el("input", { type: "text", maxlength: "40", placeholder: "your TikTok username", autocapitalize: "none", autocomplete: "off", spellcheck: "false", "aria-label": "Your TikTok username" });
+  const level = el("select", { "aria-label": "Your TikTok gifter level" }, ...Array.from({ length: 50 }, (_, i) => el("option", { value: String(i + 1), selected: i + 1 === 10 }, `Level ${i + 1}`)));
+  const bonus = el("p", {});
+  const updateBonus = () => { bonus.textContent = `🎁 +1 Geerho welcome bonus: you'll start at Level ${Math.min(Number(level.value) + 1, 50)} on Geerho once we approve it.`; };
+  level.addEventListener("change", updateBonus); updateBonus();
+  const send = button("Get My Code", async () => {
+    const name = username.value.trim().replace(/^@+/, "");
+    if (name.length < 2) return ctx.fail("Enter your TikTok username.");
+    const { error } = await supabase.rpc("request_level_transfer", { tiktok_username: name, level: Number(level.value) });
+    if (error) return ctx.fail(friendlyError(error));
+    ctx.reload();
+  });
+  return [el("p", { class: "group-title" }, "Transfer your TikTok level"),
+    el("div", { class: "decision" }, el("label", {}, "@ ", username), el("label", {}, "Your TikTok gifter level", level),
+      el("p", { class: "hint" }, "Use the account you'll send the code from. We check the gifter level shown on your TikTok profile."),
+      bonus,
+      el("ol", { class: "hint" }, el("li", {}, "Tap Get My Code."), el("li", {}, `Send the code to @${TIKTOK_HANDLE} in a TikTok message.`),
+        el("li", {}, "We check your gifter level and approve it, usually within 24 hours. You'll hear back in Geerho Support.")),
+      el("p", { class: "hint" }, "Each person can transfer a TikTok level to one verified Geerho account."),
+      actionsBar(send))];
 }
 
 const PROOF_KINDS = [["utility_bill", "Utility bill (power, water, internet)"], ["bank_statement", "Bank or credit card statement"],
@@ -890,8 +989,13 @@ async function follows(ctx, which) {
   const { data, error } = await supabase.rpc("follow_list", { member: ctx.me.id, which, page_size: 100, page: 0 });
   if (error) throw error;
   if (!(data ?? []).length) return [empty("team", `No ${which} yet`, which === "contacts" ? "People you follow who follow you back show up here." : "")];
-  return [group(data.map((p) => el("a", { class: "item-row", href: `member.html?id=${p.id}` }, avatar(p.avatar_url, p.display_name || p.username, 44),
-    el("span", { class: "row-title" }, el("strong", {}, p.display_name || `@${p.username}`), el("small", {}, `@${p.username}`)), icon("chevronRight", "chev"))))];
+  const row = (p) => el("a", { class: "item-row", href: `member.html?id=${p.id}` }, avatar(p.avatar_url, p.display_name || p.username, 44),
+    el("span", { class: "row-title" }, el("strong", {}, p.display_name || `@${p.username}`), el("small", {}, `@${p.username}`)), icon("chevronRight", "chev"));
+  if (which !== "followers") return [group(data.map(row))];
+  // Your own followers can be removed (the app's swipe → Remove); they aren't told.
+  return [group(data.map((p) => el("div", { class: "item" }, row(p),
+    actionsBar(button("Remove", confirmThen(ctx, `Remove ${p.display_name || "@" + p.username}?`, "They won't be told. They can follow you again later.", "Remove",
+      () => supabase.rpc("remove_followers", { members: [p.id] }), { danger: true }), "secondary")))))];
 }
 
 async function blocked(ctx) {

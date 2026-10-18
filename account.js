@@ -22,6 +22,27 @@ function show(name) {
 const RESERVED = new Set(["admin", "administrator", "geerho", "help", "moderator", "mod", "official",
   "root", "security", "staff", "support", "system", "team", "xenpen"]);
 
+/** As you type, says whether a username is free (the app's check: not taken, and not someone's old name still held, M60). */
+function liveAvailability(input, current = null) {
+  if (input.dataset.live) return;
+  input.dataset.live = "1";
+  const note = document.createElement("p");
+  note.className = "hint";
+  note.setAttribute("aria-live", "polite");
+  input.after(note);
+  let timer = null;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    const name = input.value.trim().toLowerCase().replace(/^@/, "");
+    if (!name || name === current || usernameProblem(name)) { note.textContent = name && usernameProblem(name) ? usernameProblem(name) : ""; return; }
+    timer = setTimeout(async () => {
+      const { data, error } = await supabase.rpc("username_available", { name });
+      if (input.value.trim().toLowerCase().replace(/^@/, "") !== name || error) return;
+      note.textContent = data ? `✓ @${name} is available` : `@${name} is taken`;
+    }, 400);
+  });
+}
+
 function usernameProblem(name) {
   if (name.length < 2) return "Use at least 2 characters.";
   if (name.length > 30) return "Use 30 characters or fewer.";
@@ -50,6 +71,7 @@ for (const button of document.querySelectorAll("button.provider")) {
 function setupUsername(user) {
   const form = document.getElementById("username-form");
   const input = document.getElementById("username");
+  liveAvailability(input);
   const error = document.getElementById("username-error");
   const fail = (message) => {
     error.textContent = message;
@@ -87,6 +109,7 @@ function usernameError(saveError) {
 async function renderUsernameChange(user, profile) {
   const form = document.getElementById("change-username-form");
   const input = document.getElementById("new-username");
+  liveAvailability(input, profile?.username ?? null);
   const error = document.getElementById("new-username-error");
   const hint = document.getElementById("new-username-hint");
   input.value = profile.username;

@@ -4,6 +4,7 @@ import { el, listingCard } from "./site.js";
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { icon, verifiedBadge } from "./icons.js";
 import { avatar, memberStar } from "./profile.js";
+import { textDialog } from "./ui-dialog.js";
 
 const main = document.getElementById("member");
 const status = document.getElementById("status");
@@ -86,9 +87,23 @@ async function render() {
         el("span", { class: "row-title" }, el("strong", {}, x.reviewer?.display_name || `@${x.reviewer?.username ?? "member"}`),
           el("small", {}, `${"★".repeat(x.rating)}${"☆".repeat(5 - x.rating)} · as ${x.reviewee_role === "seller" ? "seller" : x.reviewee_role ?? "member"} · ${new Date(x.created_at).toLocaleDateString()}`))),
       x.body ? el("p", { style: "margin:8px 0 0" }, x.body) : null,
-      x.reply ? el("p", { class: "hint", style: "margin:6px 0 0" }, `Reply: ${x.reply}`) : null))) : el("p", { class: "hint" }, "No reviews yet."),
+      x.reply ? el("p", { class: "hint", style: "margin:6px 0 0" }, `Reply: ${x.reply}`) : null,
+      isMe && !x.reply ? replyButton(x) : null))) : el("p", { class: "hint" }, "No reviews yet."),
   );
   status.hidden = true;
 }
 
 render();
+
+/** One public reply to a review of you (same as the app). */
+function replyButton(review) {
+  const b = el("button", { type: "button", class: "link-button" }, "Reply");
+  b.addEventListener("click", async () => {
+    const text = await textDialog("Reply to this review", "Your reply shows under the review for everyone. You can reply once.", { okLabel: "Post Reply", min: 1 });
+    if (!text) return;
+    const { error } = await supabase.rpc("reply_to_review", { review: review.id, reply: text });
+    if (error) { alert(friendlyError(error)); return; }
+    b.replaceWith(el("p", { class: "hint", style: "margin:6px 0 0" }, `Reply: ${text}`));
+  });
+  return b;
+}

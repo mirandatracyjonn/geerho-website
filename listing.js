@@ -149,8 +149,11 @@ function actions(listing) {
     if (user?.id !== listing.seller_id) return;
     message.replaceWith(el("a", { class: "button secondary", href: "account.html#listings" }, "Manage in My Listings"));
   });
+  const pinBox = el("div", { class: "pin-box" });
+  exactSpot(listing, pinBox);
   return el("div", { class: "in-app" },
     webBox,
+    pinBox,
     message,
     error,
     el("p", { class: "hint" }, isHome
@@ -220,3 +223,64 @@ async function render() {
 }
 
 render();
+
+// --- Exact spot (M35): the poster pins the meeting place; only the people who need it can see it --------------------
+
+const PIN_AUDIENCE = {
+  property_sale: ["everyone", "Everyone can see it, like your street address."],
+  rental: ["a renter whose tour you confirm", "Only renters whose tour you confirm can see it."],
+  job: ["the pro you hire", "Only the pro you hire can see it, to find you and navigate there."],
+};
+function pinApplies(l) {
+  if (l.kind === "property_sale" || l.kind === "rental") return true;
+  if (l.kind === "job") return !l.remote_ok;
+  if (l.kind === "item") return l.listing_format === "rental" || !!l.offers_pickup;
+  return false;
+}
+function pinAudience(l) {
+  if (PIN_AUDIENCE[l.kind]) return PIN_AUDIENCE[l.kind][1];
+  return l.listing_format === "rental"
+    ? "Only renters whose booking you accept can see it, until the item is returned."
+    : "Only a buyer who picks it up can see it, after you accept their purchase.";
+}
+
+async function exactSpot(listing, box) {
+  if (!pinApplies(listing)) return;
+  const { currentUser, friendlyError, supabase } = await import("./auth.js");
+  const user = await currentUser();
+  if (!user) return;
+  const { data: pin } = await supabase.from("listing_pins").select("listing_id, latitude, longitude, note").eq("listing_id", listing.id).maybeSingle();
+  const mapLink = (p) => el("a", { class: "button secondary", href: `https://maps.google.com/?q=${p.latitude},${p.longitude}`, target: "_blank", rel: "noopener" }, "Open in Maps");
+  if (user.id !== listing.seller_id) {
+    if (pin) box.replaceChildren(el("div", { class: "panel" }, el("h3", {}, "📍 Exact spot"),
+      pin.note ? el("p", {}, pin.note) : null, el("p", { class: "hint" }, "Shared with you by the poster. Don't share it with others."), mapLink(pin)));
+    return;
+  }
+  const note = el("input", { type: "text", maxlength: "200", value: pin?.note ?? "", placeholder: "Note, e.g. Gate code or which entrance", "aria-label": "Note" });
+  const problem = el("p", { class: "status bad", role: "alert", hidden: true });
+  const place = el("button", { type: "button" }, pin ? "Move to My Current Location" : "Pin My Current Location");
+  place.addEventListener("click", () => {
+    problem.hidden = true;
+    if (!navigator.geolocation) { problem.textContent = "This browser can't share your location."; problem.hidden = false; return; }
+    place.disabled = true;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const spot = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, note: note.value.trim() || null };
+      // Move it if it exists; otherwise place it (same as the app).
+      const { data: moved, error } = await supabase.from("listing_pins").update(spot).eq("listing_id", listing.id).select("listing_id");
+      const result = !error && !(moved ?? []).length ? await supabase.from("listing_pins").insert({ listing_id: listing.id, ...spot }) : { error };
+      place.disabled = false;
+      if (result.error) { problem.textContent = friendlyError(result.error); problem.hidden = false; return; }
+      exactSpot(listing, box);
+    }, () => { place.disabled = false; problem.textContent = "Location wasn't shared. Allow location access and stand at the spot."; problem.hidden = false; },
+    { enableHighAccuracy: true, timeout: 15000 });
+  });
+  const remove = pin ? el("button", { type: "button", class: "secondary" }, "Remove Pin") : null;
+  remove?.addEventListener("click", async () => {
+    const { error } = await supabase.from("listing_pins").delete().eq("listing_id", listing.id);
+    if (error) { problem.textContent = friendlyError(error); problem.hidden = false; return; }
+    exactSpot(listing, box);
+  });
+  box.replaceChildren(el("div", { class: "panel" }, el("h3", {}, "📍 Exact spot"),
+    el("p", { class: "hint" }, `${pin ? "Pinned. " : "Stand at the meeting place and pin it. "}${pinAudience(listing)}`),
+    note, problem, el("div", { class: "actions" }, place, pin ? mapLink(pin) : null, remove)));
+}
