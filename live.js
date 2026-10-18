@@ -24,6 +24,7 @@ async function renderNow() {
   status.textContent = data?.length ? "" : "Nobody is live right now. Check back soon.";
 }
 
+let canRemoveComments = false; // moderators, and the show's host (same as the app)
 let chatTimer = null;
 
 async function renderShow() {
@@ -75,6 +76,22 @@ async function renderShow() {
   document.getElementById("featured").replaceChildren(...featured);
 
   const user = await currentUser();
+  // Moderators and the host can remove chat messages; moderators can end a show (the app's Moderator section).
+  const { data: modRole } = user ? await supabase.rpc("my_moderation_role") : { data: null };
+  canRemoveComments = !!modRole || (!!user && user.id === show.host_id);
+  if (modRole && show.is_live) {
+    const reason = el("input", { type: "text", maxlength: "300", placeholder: "Reason (the host sees it)", "aria-label": "Reason" });
+    const end = el("button", { type: "button", class: "danger-button" }, "End This Live Show");
+    const problem = el("p", { class: "status bad", role: "alert", hidden: true });
+    end.addEventListener("click", async () => {
+      if (!reason.value.trim()) { problem.textContent = "Give a reason; the host sees it."; problem.hidden = false; return; }
+      end.disabled = true;
+      const { error: endError } = await supabase.rpc("moderate_live_show", { show: showId, note: reason.value.trim() });
+      if (endError) { problem.textContent = friendlyError(endError); problem.hidden = false; end.disabled = false; return; }
+      location.reload();
+    });
+    document.getElementById("chat-form").after(el("section", { class: "live-moderator" }, el("h2", {}, "Moderator"), reason, end, problem));
+  }
   document.getElementById("chat-form").hidden = !show.is_live || !user;
   document.getElementById("chat-signin").hidden = !show.is_live || !!user;
   await loadChat();
@@ -128,8 +145,15 @@ async function loadChat() {
     .eq("show_id", showId).order("id", { ascending: false }).limit(80);
   const rows = (data ?? []).reverse();
   chat.replaceChildren(...(rows.length
-    ? rows.map((row) => el("li", {},
-        el("strong", {}, row.author?.display_name ?? (row.author?.username ? `@${row.author.username}` : "Member")), " ", row.body))
+    ? rows.map((row) => {
+        const item = el("li", {}, el("strong", {}, row.author?.display_name ?? (row.author?.username ? `@${row.author.username}` : "Member")), " ", row.body);
+        if (canRemoveComments) {
+          const remove = el("button", { type: "button", class: "link-button", "aria-label": "Remove this message" }, "Remove");
+          remove.addEventListener("click", async () => { await supabase.rpc("remove_live_comment", { comment: row.id }); loadChat(); });
+          item.append(" ", remove);
+        }
+        return item;
+      })
     : [el("li", { class: "hint" }, "No messages yet. Signed-in members can chat.")]));
   chat.lastElementChild?.scrollIntoView({ block: "nearest" });
 }

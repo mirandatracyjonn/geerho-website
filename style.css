@@ -1084,3 +1084,16 @@ button.small { min-height: 34px; padding: 6px 14px; font-size: 0.9rem; }
 .handbook th, .handbook td { border: 1px solid var(--rule); padding: 6px 8px; text-align: left; vertical-align: top; }
 .center { text-align: center; }
 .overdue-links { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+
+/* Admin owner tools (commission rate, delete beta test data, categories, team) */
+.inline-field { display: flex; align-items: center; gap: 8px; font-size: 1.4rem; font-weight: 700; }
+.inline-field input { width: 7rem; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 6px 10px; }
+.decision input[type="text"], .decision input[type="search"], .decision select { width: 100%; font: inherit; color: var(--text); background: var(--field); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; }
+details > summary { cursor: pointer; padding: 10px 16px; color: var(--link); font-weight: 600; }
+.team-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.team-row > :nth-child(2) { flex: 1; }
+.team-row button { min-height: 32px; padding: 4px 12px; font-size: 0.9rem; }
+.seat-badge { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font-weight: 800; color: #fff; background: var(--accent); flex: none; }
+.seat-badge.gold { background: linear-gradient(135deg, #f7d774, #d4a017); color: #3f2e00; }
+.wrap-actions { flex-wrap: wrap; margin: 0 0 16px; }
+.live-moderator { display: grid; gap: 10px; margin: 16px 0; } .live-moderator input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--field); color: var(--text); }

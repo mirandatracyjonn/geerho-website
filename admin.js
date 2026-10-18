@@ -214,15 +214,18 @@ async function overview() {
     groupTitle("Fees and commission"),
     group(
       stat("Commission earned", usd(o.commission_earned_cents), { detail: "Geerho isn't charging fees yet", iconName: "dollar", tint: "gray" }),
-      stat("Fees waived", usd(o.fees_waived_cents), { detail: `At ${pct} of sales`, iconName: "dollar", tint: "purple" }),
+      stat("Fees waived", usd(o.fees_waived_cents), { detail: owner ? `At ${pct} of sales · change the rate` : `At ${pct} of sales`, iconName: "dollar", tint: "purple", href: owner ? `#commission/${o.commission_rate}` : null }),
       stat("Founding Members", `${o.founding_used} of ${o.founding_limit}`, { detail: `${Math.max(o.founding_limit - o.founding_used, 0)} free spots left · ${o.lifetime_free} owners free for life`, iconName: "star", tint: "orange", href: "#people/founding" }),
     ),
     groupTitle("Team, categories, and settings"),
     group(
-      stat("Team and Super Admins", owner ? "Manage" : "View", { detail: owner ? "Add moderators, appoint Super Admins, succession" : "Super Admins, moderators, and elections", iconName: "team", tint: "indigo" }),
-      stat("Category requests", categories, { detail: owner ? "Propose or approve new categories" : "Propose a category · the owner approves", iconName: "tag", tint: categories > 0 && owner ? "orange" : "blue" }),
+      stat("Team and Super Admins", owner ? "Manage" : "View", { detail: owner ? "Add moderators, appoint Super Admins, succession" : "Super Admins, moderators, and elections", iconName: "team", tint: "indigo", href: "#team" }),
+      stat("Category requests", categories, { detail: owner ? "Propose or approve new categories" : "Propose a category · the owner approves", iconName: "tag", tint: categories > 0 && owner ? "orange" : "blue", href: "#categories" }),
+      owner ? stat("Licenses by location", "Set rules", { detail: "Which professions need a license, where", iconName: "seal", tint: "teal", href: "#license-rules" }) : null,
+      owner ? stat("Where it's available", "Regions", { detail: "Real estate and freelance by country and state", iconName: "house", tint: "teal", href: "#regions" }) : null,
     ),
-    hint("Team, categories, licenses by location, where real estate and freelance are available, the commission rate, and deleting beta test data are in the Geerho app for now (Settings → Moderation → Admin Dashboard)."),
+    owner ? groupTitle("Before launch") : null,
+    owner ? group(stat("Delete beta test data", "Reset", { detail: "Keeps accounts, usernames, ID verifications, and the posts you choose", iconName: "trash", tint: "red", href: "#reset" })) : null,
     groupTitle("Moderators"),
     group(linkRow("#handbook", "Moderator Handbook", "How to review each queue, step by step")),
   );
@@ -340,7 +343,7 @@ async function people(filter = "all") {
   async function load() {
     try {
       const rows = (await rpc("admin_users", { filter, search: cleanSearch(search) })) ?? [];
-      list.replaceChildren(rows.length ? group(...rows.map((p) => el("li", {}, el("a", { class: "row", href: `member.html?id=${encodeURIComponent(p.id)}` },
+      list.replaceChildren(rows.length ? group(...rows.map((p) => el("li", {}, el("a", { class: "row", href: `#person/${encodeURIComponent(p.id)}` },
         el("span", { class: "row-stack" },
           el("span", { class: "row-title" }, p.display_name || at(p.username, "deleted"), p.verified ? verifiedBadge(16) : null,
             p.suspended ? el("span", { class: "pill danger-pill" }, "Suspended") : null),
@@ -859,6 +862,611 @@ async function handbook() {
 
 // --- Routing ---------------------------------------------------------------------------------------------------------
 
+// --- Owner: commission rate and deleting beta test data (same as the app's sheets) -----------------------------------
+
+function commissionRate(current) {
+  if (role !== "owner") { location.hash = ""; return; }
+  const percent = el("input", { type: "number", min: "0", max: "50", step: "0.5", value: String(Math.round((Number(current) || 0.05) * 1000) / 10), "aria-label": "Commission rate in percent" });
+  const error = errorBox(""); error.hidden = true;
+  const save = el("button", { type: "button" }, "Save");
+  act(save, error, "", async () => {
+    const value = Number(percent.value);
+    if (!(value >= 0 && value <= 50)) throw new Error("Choose a rate between 0% and 50%.");
+    await rpc("set_commission_rate", { rate: Math.round(value * 10) / 1000 });
+  });
+  show(back("Commission Rate"),
+    group(el("li", { class: "cell-pad" }, el("label", { class: "inline-field" }, percent, " %"))),
+    hint("Used to show the fees Geerho is waiving. Nobody is charged until payments are added and the Terms are updated."),
+    decisionArea(error, el("div", { class: "actions" }, save)));
+}
+
+const POST_TYPES = [["for_sale", "Items for sale"], ["auction", "Auctions"], ["tool_rental", "Tools and equipment for rent"],
+  ["home_rent", "Homes for rent"], ["home_sale", "Homes for sale"], ["service", "Services"], ["job", "Jobs"]];
+
+/** Recursively deletes every file in a storage bucket except `keeping` (folders come back without an id). */
+async function purgeFiles(bucket, keeping, folder = "") {
+  const api = supabase.storage.from(bucket);
+  const { data: items } = await api.list(folder, { limit: 1000 });
+  let removed = 0;
+  const files = [];
+  for (const item of items ?? []) {
+    const path = folder ? `${folder}/${item.name}` : item.name;
+    if (!item.id) removed += await purgeFiles(bucket, keeping, path);
+    else if (!keeping.has(path)) files.push(path);
+  }
+  for (let i = 0; i < files.length; i += 100) {
+    const chunk = files.slice(i, i + 100);
+    const { error } = await api.remove(chunk);
+    if (!error) removed += chunk.length;
+  }
+  return removed;
+}
+
+async function resetTestData() {
+  if (role !== "owner") { location.hash = ""; return; }
+  show(back("Delete Beta Test Data"), loading());
+  const candidates = (await rpc("admin_reset_candidates").catch(() => [])) ?? [];
+  const keepTypes = new Set();
+  const keepPosts = new Set();
+  const keeps = (c) => keepTypes.has(c.post_type) || keepPosts.has(c.id);
+  const keptLabel = el("p", { class: "group-title" });
+  const updateKept = () => { keptLabel.textContent = `Keep posts (${candidates.filter(keeps).length} of ${candidates.length})`; };
+
+  const typeRows = POST_TYPES.map(([type, title]) => {
+    const n = candidates.filter((c) => c.post_type === type).length;
+    const box = el("input", { type: "checkbox", disabled: n === 0 });
+    box.addEventListener("change", () => { if (box.checked) keepTypes.add(type); else keepTypes.delete(type); updateKept(); });
+    return el("li", { class: "cell-pad" }, el("label", { class: "check-row" }, box, ` ${title} (${n})`));
+  });
+  const postRows = candidates.map((c) => {
+    const box = el("input", { type: "checkbox" });
+    box.addEventListener("change", () => { if (box.checked) keepPosts.add(c.id); else keepPosts.delete(c.id); updateKept(); });
+    const what = POST_TYPES.find(([t]) => t === c.post_type)?.[1] ?? c.post_type;
+    return el("li", { class: "cell-pad" }, el("label", { class: "check-row" }, box,
+      el("span", { class: "row-stack" }, el("span", { class: "row-title" }, c.title),
+        el("span", { class: "hint" }, `${what} · ${at(c.seller_username)} · ${c.status}${c.reference ? ` · ${c.reference}` : ""}`))));
+  });
+  const details = el("details", {}, el("summary", {}, "Choose individual posts"), group(...postRows));
+  updateKept();
+
+  const confirm = el("input", { type: "text", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "Type DELETE", "aria-label": "Type DELETE to confirm" });
+  const run = el("button", { type: "button", class: "danger-button", disabled: true }, "Delete Test Data");
+  confirm.addEventListener("input", () => { run.disabled = confirm.value.trim() !== "DELETE"; });
+  const status = el("p", { class: "status-line", role: "status" });
+  const error = errorBox(""); error.hidden = true;
+  run.addEventListener("click", async () => {
+    if (!(await confirmDialog("Delete all beta test data?", "This can't be undone. Do this only before launch, while all data is test data.", "Delete", { danger: true }))) return;
+    error.hidden = true;
+    root.querySelectorAll("button, input").forEach((b) => { b.disabled = true; });
+    try {
+      status.textContent = "Deleting test data…";
+      const counts = await rpc("admin_reset_test_data", { confirmation: "DELETE", keep_types: [...keepTypes].sort(), keep_listings: [...keepPosts].sort() });
+      status.textContent = "Removing uploaded photos and attachments…";
+      let files = await purgeFiles("support-attachments", new Set()) + await purgeFiles("rental-photos", new Set());
+      const kept = await rpc("admin_kept_photo_paths").catch(() => null);
+      if (kept) files += await purgeFiles("listing-photos", new Set(kept));
+      const rows = Object.entries(counts ?? {}).sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => kv(k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()), String(v)));
+      show(back("Delete Beta Test Data"),
+        el("p", { class: "status good", role: "status" }, "Test data deleted"),
+        group(...rows, kv("Photos and attachments", String(files))),
+        hint(`Accounts, usernames, profile photos, ID verifications, Founding Member numbers, and moderators were kept${(counts?.listings_kept ?? 0) > 0 ? ", along with the posts you chose and their photos." : "."}`));
+    } catch (e) {
+      status.textContent = "";
+      error.textContent = friendlyError(e); error.hidden = false;
+      root.querySelectorAll("button, input").forEach((b) => { b.disabled = false; });
+      run.disabled = confirm.value.trim() !== "DELETE";
+    }
+  });
+
+  show(back("Delete Beta Test Data"),
+    keptLabel, group(...typeRows), details,
+    hint("Kept posts stay live with their photos, so you don't have to post them again at launch. Their messages, offers, bids, and favorites are still cleared, auctions start over with no bids, and live posts get a fresh 60 days. Sold posts are always deleted."),
+    groupTitle("Will be deleted"),
+    group(...["All other listings and their photos, and every sold post", "Purchase requests, sales, and reviews", "Auction bids and reserves",
+      "Rentals and their condition photos", "All conversations and messages", "Support requests and attachments", "Reports, favorites, watches, and blocks"]
+      .map((t) => el("li", { class: "cell-pad" }, t))),
+    groupTitle("Will be kept"),
+    group(...["Every account, username, and profile photo", "ID verifications (they cost money)", "Founding Member numbers and fee plans", "Moderators and settings"]
+      .map((t) => el("li", { class: "cell-pad" }, t))),
+    groupTitle("Confirm"),
+    decisionArea(confirm, hint("This can't be undone. Do this only before launch, while all data is test data."), status, error, el("div", { class: "actions" }, run)));
+}
+
+// --- Category requests (any moderator proposes; the owner approves) -----------------------------------------------
+
+const CATEGORY_TARGETS = [["item", "Items for sale", "e.g. Camping gear"], ["rental", "Homes for rent or lease", "e.g. Studio, Bedspace"],
+  ["property_sale", "Homes for sale", "e.g. Townhouse, Farm"], ["profession", "Kind of work (services and jobs)", "e.g. Pool cleaning"]];
+const FIELDS = [["real_estate", "Real estate"], ["trades", "Trades"], ["home_services", "Home services"],
+  ["professional", "Professional services"], ["health_and_care", "Health and care"], ["creative", "Creative"],
+  ["tech", "Tech"], ["education", "Lessons and tutoring"], ["other", "Other"]];
+const targetName = (t) => CATEGORY_TARGETS.find(([id]) => id === t)?.[1] ?? t;
+const fieldName = (f) => FIELDS.find(([id]) => id === f)?.[1] ?? f;
+
+function proposalRow(p, href) {
+  const state = p.status === "approved" ? el("span", { class: "state good" }, "Approved")
+    : p.status === "rejected" ? el("span", { class: "state bad" }, "Not approved")
+    : el("span", { class: "state warn" }, role === "owner" ? "Tap to decide" : "Waiting");
+  const lines = el("span", { class: "row-stack" },
+    el("span", { class: "row-title" }, p.name),
+    el("span", { class: "hint" }, targetName(p.target) + (p.field ? ` · ${fieldName(p.field)}` : "") + (p.license_required ? " · needs a license" : "")),
+    p.note ? el("span", { class: "hint" }, `“${p.note}”`) : null,
+    el("span", { class: "hint" }, `Proposed by ${at(p.proposer_username)}${p.reviewer_username ? ` · decided by ${at(p.reviewer_username)}` : ""}`),
+    p.status === "rejected" && p.review_note ? el("span", { class: "state bad" }, p.review_note) : null);
+  return el("li", {}, href ? el("a", { class: "row", href }, lines, state, icon("chevronRight", "chev")) : el("div", { class: "row" }, lines, state));
+}
+
+async function categoryRequests() {
+  show(back("Category Requests"), loading());
+  const all = (await rpc("category_proposals_list")) ?? [];
+  cache.proposals = all;
+  const pending = all.filter((p) => p.status === "pending");
+  const decided = all.filter((p) => p.status !== "pending");
+  show(back("Category Requests"),
+    hint(role === "owner" ? "Moderators propose new categories. They appear in the app as soon as you approve them."
+      : "Propose a new category. It appears in the app once the owner approves it."),
+    group(linkRow("#propose", "Propose a Category")),
+    groupTitle(`Waiting for the owner (${pending.length})`),
+    pending.length ? group(...pending.map((p) => proposalRow(p, role === "owner" ? `#category/${p.id}` : null))) : group(el("li", { class: "cell-pad" }, "Nothing waiting")),
+    decided.length ? groupTitle("Decided") : null,
+    decided.length ? group(...decided.map((p) => proposalRow(p, null))) : null);
+}
+
+function proposeCategory() {
+  const target = el("select", { "aria-label": "Type" }, ...CATEGORY_TARGETS.map(([id, title]) => el("option", { value: id }, title)));
+  const name = el("input", { type: "text", maxlength: "60", placeholder: `Name (${CATEGORY_TARGETS[0][2]})`, "aria-label": "Name" });
+  const field = el("select", { "aria-label": "Field" }, ...FIELDS.map(([id, title]) => el("option", { value: id, selected: id === "home_services" }, title)));
+  const license = el("input", { type: "checkbox" });
+  const professionOnly = el("div", { hidden: true }, el("label", {}, "Field", field),
+    el("label", { class: "check-row" }, license, " Needs a license"),
+    hint("If it needs a license, only freelancers with an approved license for it can offer it or respond to jobs for it."));
+  target.addEventListener("change", () => {
+    name.placeholder = `Name (${CATEGORY_TARGETS.find(([id]) => id === target.value)[2]})`;
+    professionOnly.hidden = target.value !== "profession";
+  });
+  const note = el("textarea", { rows: "3", maxlength: "500", placeholder: "e.g. Several sellers asked for this", "aria-label": "Why" });
+  const send = el("button", { type: "button" }, "Send");
+  const error = errorBox(""); error.hidden = true;
+  act(send, error, "categories", async () => {
+    if (!name.value.trim()) throw new Error("Enter a name.");
+    const isProfession = target.value === "profession";
+    await rpc("propose_category", { target: target.value, name: name.value.trim(), field: isProfession ? field.value : null,
+      license_required: isProfession && license.checked, note: note.value.trim() || null });
+  });
+  show(back("Propose a Category", "#categories"),
+    decisionArea(el("label", {}, "Type", target), name, professionOnly, el("label", {}, "Why (optional)", note), error, el("div", { class: "actions" }, send)));
+}
+
+async function reviewCategory(id) {
+  if (role !== "owner") { location.hash = "categories"; return; }
+  if (!cache.proposals?.some((p) => p.id === id)) cache.proposals = (await rpc("category_proposals_list").catch(() => [])) ?? [];
+  const p = cache.proposals.find((x) => x.id === id && x.status === "pending");
+  if (!p) { show(back("Category Request", "#categories"), empty("tag", "Already decided", "This request isn't waiting anymore.")); return; }
+  const note = noteBox();
+  const approve = el("button", { type: "button" }, "Approve and Add to the App");
+  const reject = el("button", { type: "button", class: "danger-button" }, "Don't Approve");
+  needsNote(note, reject);
+  const error = errorBox(""); error.hidden = true;
+  const decide = (yes) => () => rpc("review_category_proposal", { proposal: id, approve: yes, note: note.value.trim() || null });
+  act(approve, error, "categories", decide(true));
+  act(reject, error, "categories", decide(false));
+  show(back(p.name, "#categories"),
+    group(kv("Type", targetName(p.target)), p.field ? kv("Field", fieldName(p.field)) : null,
+      p.target === "profession" ? kv("Needs a license", p.license_required ? "Yes" : "No") : null,
+      kv("Proposed by", at(p.proposer_username)), kv("When", dateTime(p.created_at))),
+    p.note ? group(el("li", { class: "cell-pad" }, `“${p.note}”`)) : null,
+    groupTitle("Note to the moderator"),
+    decisionArea(note, error, el("div", { class: "actions" }, approve, reject)));
+}
+
+// --- Team and Super Admins (same rules as the app: seats 1–3, succession, elections) ------------------------------
+
+const personName = (p) => p.username ? `@${p.username}` : (p.display_name ?? "Member");
+const cleanUsername = (text) => (text ?? "").trim().replace(/^@+/, "").replace(/\s+/g, "");
+const ACTIVITY = { approve: "approved a listing", suspend: "suspended someone", unsuspend: "lifted a suspension",
+  add_owner: "added an owner", add_moderator: "added a moderator", remove_moderator: "removed a moderator" };
+function activitySummary(e) {
+  const who = e.moderator_username ? `@${e.moderator_username}` : "A moderator";
+  const what = e.action === "remove" ? `removed a ${e.target_type}`
+    : e.action === "dismiss" ? (e.target_type === "user" ? "dismissed reports about someone" : "dismissed a message report")
+    : ACTIVITY[e.action] ?? `${e.action.replace(/_/g, " ")} (${e.target_type})`;
+  return `${who} ${what}`;
+}
+
+async function team() {
+  show(back("Team and Super Admins"), loading());
+  const [t, activity] = await Promise.all([rpc("moderation_team_overview"), rpc("moderation_activity").catch(() => [])]);
+  const isSA = t.my_seat != null;
+  const isSA1 = t.my_seat === 1;
+  const openSeats = [1, 2, 3].filter((seat) => !(t.super_admins ?? []).some((p) => p.seat === seat));
+  const notice = el("p", { class: "status good", role: "status", hidden: true });
+  const error = errorBox(""); error.hidden = true;
+  // Runs an action, then reloads the page with a message (or shows the database's reason).
+  const doIt = async (button, message, operation) => {
+    error.hidden = true;
+    button.disabled = true;
+    try {
+      const result = await operation();
+      await team();
+      const msg = typeof message === "function" ? message(result) : message;
+      if (msg) { const n = root.querySelector(".status.good"); if (n) { n.textContent = msg; n.hidden = false; } }
+    } catch (e) {
+      if (e === CANCELLED) { button.disabled = false; return; }
+      error.textContent = friendlyError(e); error.hidden = false; button.disabled = false;
+    }
+  };
+  const sections = [notice, error];
+
+  if (t.retirement) {
+    const r = t.retirement;
+    const buttons = [];
+    if (isSA && !r.confirmed_by_me && (t.super_admins ?? []).some((p) => p.seat === t.my_seat && p.user_id !== r.retiree_id)) {
+      const b = el("button", { type: "button" }, "Confirm Retirement");
+      b.addEventListener("click", () => doIt(b, "Confirmed.", () => rpc("confirm_retirement", { request: r.id })));
+      buttons.push(b);
+    }
+    if (isSA) {
+      const b = el("button", { type: "button", class: "danger-button" }, "Cancel Retirement");
+      b.addEventListener("click", () => doIt(b, "Retirement cancelled.", () => rpc("cancel_retirement", { request: r.id })));
+      buttons.push(b);
+    }
+    sections.push(groupTitle("Retirement waiting for confirmation"),
+      decisionArea(el("strong", {}, `@${r.retiree_username ?? "a Super Admin"} ${r.reason === "passed_away" ? "passed away" : "stepped down"}`),
+        el("p", {}, `Confirmed by ${r.confirmations} of ${r.needed} surviving Super Admins.`), buttons.length ? el("div", { class: "actions" }, ...buttons) : null));
+  }
+
+  if (t.election) {
+    const e = t.election;
+    const tie = e.status === "tie";
+    const candidates = tie && e.tied ? (t.moderators ?? []).filter((m) => e.tied.includes(m.user_id)) : (t.moderators ?? []);
+    const rows = candidates.map((c) => {
+      const extras = [];
+      if (e.my_vote === c.user_id) extras.push(el("span", { class: "state good" }, "Your vote"));
+      if (isSA) extras.push(el("span", { class: "hint" }, `${e.tally?.[c.user_id] ?? 0} votes`));
+      if (tie && isSA1) {
+        const b = el("button", { type: "button" }, "Break Tie");
+        b.addEventListener("click", () => doIt(b, `${personName(c)} is the new Super Admin ${e.seat}.`, () => rpc("break_super_admin_tie", { candidate: c.user_id })));
+        extras.push(b);
+      } else if (!tie && !isSA && role) {
+        const b = el("button", { type: "button", class: "secondary", disabled: e.my_vote === c.user_id }, e.my_vote === c.user_id ? "Voted" : "Vote");
+        b.addEventListener("click", () => doIt(b, `Your vote for ${personName(c)} is in.`, () => rpc("vote_for_super_admin", { candidate: c.user_id })));
+        extras.push(b);
+      }
+      return el("li", { class: "cell-pad team-row" }, el("span", {}, personName(c)), ...extras);
+    });
+    const parts = [el("strong", {}, `Electing Super Admin ${e.seat}`), el("p", {}, e.reason),
+      el("p", { class: "hint" }, `${e.votes_cast} of ${e.voters} moderators voted · closes ${dateOnly(e.closes_at)}`)];
+    if (isSA && !tie) {
+      const b = el("button", { type: "button" }, "Close Election and Count Votes");
+      b.addEventListener("click", () => doIt(b, (result) => result === "tie" ? "It's a tie. Super Admin 1 breaks it."
+        : result === "no_votes" ? "No votes yet; the election stays open." : `The new Super Admin ${e.seat} is seated.`, () => rpc("close_super_admin_election")));
+      parts.push(el("div", { class: "actions" }, b));
+    }
+    sections.push(groupTitle(tie ? "Election tied: Super Admin 1 decides" : "Super Admin election"), decisionArea(...parts),
+      group(...rows), hint(isSA ? "Super Admins don't vote. Close the election after 7 days or once every moderator has voted." : "1 vote per moderator. You can change your vote until the election closes."));
+  }
+
+  // Super Admins (seats 1–3)
+  const saRows = [1, 2, 3].map((seat) => {
+    const p = (t.super_admins ?? []).find((x) => x.seat === seat);
+    const badge = el("span", { class: `seat-badge${seat === 1 ? " gold" : ""}`, "aria-label": `Seat ${seat}` }, String(seat));
+    if (!p) return el("li", { class: "cell-pad team-row" }, badge, el("span", { class: "hint" }, "Empty"));
+    const extras = [];
+    if (p.seat === t.my_seat) extras.push(el("span", { class: "hint" }, "You"));
+    if (isSA && p.seat !== t.my_seat && !t.retirement) {
+      const b = el("button", { type: "button", class: "danger-button" }, "Retire");
+      b.addEventListener("click", () => {
+        // Same choice as the app: passed away or stepped down; every other surviving Super Admin then confirms.
+        const passed = el("button", { type: "button", class: "danger-button" }, "They passed away");
+        const stepped = el("button", { type: "button" }, "They stepped down");
+        const cancel = el("button", { type: "button", class: "secondary" }, "Cancel");
+        const choice = decisionArea(el("strong", {}, `Retire ${personName(p)}?`),
+          el("p", { class: "hint" }, "Every other surviving Super Admin must confirm. Then everyone below moves up a seat and the moderators elect someone for the empty seat."),
+          el("div", { class: "actions" }, passed, stepped, cancel));
+        const start = (reason) => doIt(b, "Retirement started. The other Super Admins need to confirm.", () => rpc("start_retirement", { target: p.user_id, reason, note: null }));
+        passed.addEventListener("click", () => start("passed_away"));
+        stepped.addEventListener("click", () => start("stepped_down"));
+        cancel.addEventListener("click", () => choice.remove());
+        b.closest("ul").after(choice);
+      });
+      extras.push(b);
+    }
+    return el("li", { class: "cell-pad team-row" }, badge, el("span", { class: "row-title" }, personName(p)), ...extras);
+  });
+  sections.push(groupTitle("Super Admins"), group(...saRows));
+  if (isSA1 && openSeats.length && !t.election) {
+    const name = el("input", { type: "text", placeholder: "username to appoint", autocapitalize: "none", autocomplete: "off", spellcheck: "false", "aria-label": "Username to appoint" });
+    const b = el("button", { type: "button", disabled: true }, `Appoint Super Admin ${openSeats[0]}`);
+    name.addEventListener("input", () => { b.disabled = cleanUsername(name.value).length < 2; });
+    b.addEventListener("click", () => doIt(b, `@${cleanUsername(name.value)} is now a Super Admin.`, () => rpc("appoint_super_admin", { target_username: cleanUsername(name.value) })));
+    sections.push(decisionArea(name, el("div", { class: "actions" }, b)),
+      hint("As Super Admin 1, you can appoint a verified member to an empty seat. They can manage moderators and, with the other Super Admins, keep Geerho running."));
+  }
+
+  // Moderators
+  const modRows = (t.moderators ?? []).map((m) => {
+    const extras = [];
+    if (isSA) {
+      const b = el("button", { type: "button", class: "secondary" }, "Remove");
+      b.addEventListener("click", async () => {
+        if (!(await confirmDialog(`Remove ${personName(m)}?`, "They'll no longer be able to moderate.", "Remove from Team", { danger: true }))) return;
+        doIt(b, `${personName(m)} was removed.`, () => rpc("remove_moderator", { target: m.user_id }));
+      });
+      extras.push(b);
+    }
+    return el("li", { class: "cell-pad team-row" }, el("a", { href: `member.html?id=${encodeURIComponent(m.user_id)}` }, personName(m)), ...extras);
+  });
+  sections.push(groupTitle(`Moderators (${(t.moderators ?? []).length})`), modRows.length ? group(...modRows) : group(el("li", { class: "cell-pad hint" }, "No moderators yet")));
+  if (isSA) {
+    const name = el("input", { type: "text", placeholder: "username to add", autocapitalize: "none", autocomplete: "off", spellcheck: "false", "aria-label": "Username to add as a moderator" });
+    const b = el("button", { type: "button", disabled: true }, "Add Moderator");
+    name.addEventListener("input", () => { b.disabled = cleanUsername(name.value).length < 2; });
+    b.addEventListener("click", () => doIt(b, `@${cleanUsername(name.value)} is now a moderator.`, () => rpc("add_moderator", { target_username: cleanUsername(name.value), new_role: "moderator" })));
+    sections.push(decisionArea(name, el("div", { class: "actions" }, b)), hint("Moderators review reports, licenses, addresses, and level transfers."));
+  }
+
+  sections.push(groupTitle("How succession works"),
+    hint("Super Admins hold seats 1, 2, and 3. Only Super Admin 1 appoints a Super Admin directly. If a Super Admin passes away or steps down, a surviving Super Admin starts their retirement and every other surviving Super Admin confirms it. Everyone below moves up a seat, and the moderators elect someone for the empty seat: 1 vote per regular moderator; Super Admins don't vote, except Super Admin 1 to break a tie."));
+  if ((activity ?? []).length) {
+    sections.push(groupTitle("Recent moderation activity"),
+      group(...activity.slice(0, 30).map((e) => el("li", { class: "cell-pad" },
+        el("span", { class: "row-stack" }, el("span", {}, activitySummary(e)), e.note ? el("span", { class: "hint" }, `“${e.note}”`) : null,
+          el("span", { class: "hint" }, dateTime(e.created_at)))))));
+  }
+  show(back("Team and Super Admins"), ...sections);
+}
+
+// --- Owner: licenses by location and where real estate / freelance are available -----------------------------------
+
+const US_STATES = [["AL", "Alabama"], ["AK", "Alaska"], ["AZ", "Arizona"], ["AR", "Arkansas"], ["CA", "California"], ["CO", "Colorado"],
+  ["CT", "Connecticut"], ["DE", "Delaware"], ["DC", "District of Columbia"], ["FL", "Florida"], ["GA", "Georgia"], ["HI", "Hawaii"],
+  ["ID", "Idaho"], ["IL", "Illinois"], ["IN", "Indiana"], ["IA", "Iowa"], ["KS", "Kansas"], ["KY", "Kentucky"], ["LA", "Louisiana"],
+  ["ME", "Maine"], ["MD", "Maryland"], ["MA", "Massachusetts"], ["MI", "Michigan"], ["MN", "Minnesota"], ["MS", "Mississippi"],
+  ["MO", "Missouri"], ["MT", "Montana"], ["NE", "Nebraska"], ["NV", "Nevada"], ["NH", "New Hampshire"], ["NJ", "New Jersey"],
+  ["NM", "New Mexico"], ["NY", "New York"], ["NC", "North Carolina"], ["ND", "North Dakota"], ["OH", "Ohio"], ["OK", "Oklahoma"],
+  ["OR", "Oregon"], ["PA", "Pennsylvania"], ["RI", "Rhode Island"], ["SC", "South Carolina"], ["SD", "South Dakota"],
+  ["TN", "Tennessee"], ["TX", "Texas"], ["UT", "Utah"], ["VT", "Vermont"], ["VA", "Virginia"], ["WA", "Washington"],
+  ["WV", "West Virginia"], ["WI", "Wisconsin"], ["WY", "Wyoming"], ["PR", "Puerto Rico"], ["GU", "Guam"], ["VI", "U.S. Virgin Islands"]];
+/** Every country (ISO code → name), by name. */
+const COUNTRIES = (() => {
+  const list = [];
+  for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) {
+    const code = String.fromCharCode(a, b);
+    const name = (() => { try { return regionNames.of(code); } catch { return null; } })();
+    if (name && name !== code && !/unknown/i.test(name)) list.push([code, name]);
+  }
+  return list.sort((x, y) => x[1].localeCompare(y[1]));
+})();
+const stateName = (code) => US_STATES.find(([c]) => c === code)?.[1] ?? code;
+const placeName = (country, subdivision) => country ? (subdivision ? `${stateName(subdivision)}, ${countryName(country)}` : countryName(country)) : "Everywhere";
+
+async function licenseRules() {
+  if (role !== "owner") { location.hash = ""; return; }
+  show(back("Licenses by Location"), loading());
+  const [{ data: professions, error: e1 }, { data: rules, error: e2 }] = await Promise.all([
+    supabase.from("professions").select().order("position"),
+    supabase.from("profession_license_rules").select("profession, country, subdivision, license_required, note")]);
+  if (e1 || e2) throw (e1 || e2);
+  cache.professions = professions ?? [];
+  const sections = [hint("Choose a kind of work to set whether it needs a license, everywhere or in a country or state. The most specific rule wins: state, then country, then everywhere.")];
+  for (const [field, title] of FIELDS) {
+    const here = (professions ?? []).filter((p) => p.field === field);
+    if (!here.length) continue;
+    sections.push(groupTitle(title), group(...here.map((p) => {
+      const local = (rules ?? []).filter((r) => r.profession === p.slug).length;
+      return linkRow(`#license-rule/${encodeURIComponent(p.slug)}`, p.name,
+        `${p.license_required ? "Needs a license" : "No license needed"}${local ? ` · ${local} local ${local === 1 ? "rule" : "rules"}` : ""}`);
+    })));
+  }
+  show(back("Licenses by Location"), ...sections);
+}
+
+async function licenseRule(slug) {
+  if (role !== "owner") { location.hash = ""; return; }
+  show(back("License Rule", "#license-rules"), loading());
+  const [{ data: profession }, { data: rules }] = await Promise.all([
+    supabase.from("professions").select().eq("slug", slug).maybeSingle(),
+    supabase.from("profession_license_rules").select("profession, country, subdivision, license_required, note").eq("profession", slug)]);
+  if (!profession) { show(back("License Rule", "#license-rules"), empty("seal", "Not found", "This kind of work doesn't exist anymore.")); return; }
+  const error = errorBox(""); error.hidden = true;
+  const save = async (params) => {
+    error.hidden = true;
+    try { await rpc("set_license_rule", { profession: slug, note: null, ...params }); await licenseRule(slug); }
+    catch (e) { error.textContent = friendlyError(e); error.hidden = false; }
+  };
+  const everywhere = el("input", { type: "checkbox", checked: profession.license_required });
+  everywhere.addEventListener("change", () => save({ country: null, subdivision: null, required: everywhere.checked }));
+  const sorted = (rules ?? []).sort((a, b) => placeName(a.country, a.subdivision).localeCompare(placeName(b.country, b.subdivision)));
+  const ruleRows = sorted.map((r) => {
+    const remove = el("button", { type: "button", class: "secondary" }, "Remove");
+    remove.addEventListener("click", () => save({ country: r.country, subdivision: r.subdivision, required: null }));
+    return el("li", { class: "cell-pad team-row" }, el("span", { class: "row-stack" },
+      el("span", { class: "row-title" }, placeName(r.country, r.subdivision)),
+      el("span", { class: r.license_required ? "state warn" : "state good" }, r.license_required ? "License needed" : "No license needed"),
+      r.note ? el("span", { class: "hint" }, r.note) : null), remove);
+  });
+  const country = el("select", { "aria-label": "Country" }, ...COUNTRIES.map(([c, n]) => el("option", { value: c, selected: c === "US" }, n)));
+  const state = el("select", { "aria-label": "State" });
+  const fillStates = () => {
+    state.replaceChildren(el("option", { value: "" }, "Whole country"), ...(country.value === "US" ? US_STATES.map(([c, n]) => el("option", { value: c }, n)) : []));
+    state.hidden = country.value !== "US";
+  };
+  country.addEventListener("change", fillStates); fillStates();
+  const required = el("select", { "aria-label": "License" }, el("option", { value: "true" }, "Needed"), el("option", { value: "false" }, "Not needed"));
+  const note = el("textarea", { rows: "2", maxlength: "500", placeholder: "Note (optional), e.g. the law or agency", "aria-label": "Note" });
+  const add = el("button", { type: "button" }, "Save Rule");
+  add.addEventListener("click", () => save({ country: country.value, subdivision: state.value || null, required: required.value === "true", note: note.value.trim() || null }));
+  show(back(profession.name, "#license-rules"),
+    groupTitle("Everywhere (default)"),
+    group(el("li", { class: "cell-pad" }, el("label", { class: "check-row" }, everywhere, " Needs a license"))),
+    hint("Used wherever there's no rule below."),
+    groupTitle("Rules by place"),
+    ruleRows.length ? group(...ruleRows) : group(el("li", { class: "cell-pad hint" }, "No local rules yet")),
+    groupTitle("Add or change a rule"),
+    decisionArea(el("label", {}, "Country", country), state, el("label", {}, "License", required), note, error, el("div", { class: "actions" }, add)));
+}
+
+async function featureRegions(feature) {
+  if (role !== "owner") { location.hash = ""; return; }
+  show(back("Where It's Available"), loading());
+  const { data, error: loadError } = await supabase.from("feature_regions").select("feature, country, subdivision");
+  if (loadError) throw loadError;
+  const regions = (data ?? []).filter((r) => r.feature === feature);
+  const has = (country, subdivision) => regions.some((r) => r.country === country && (r.subdivision ?? "") === subdivision);
+  const error = errorBox(""); error.hidden = true;
+  const setRegion = async (box, country, subdivision) => {
+    error.hidden = true; box.disabled = true;
+    try { await rpc("set_feature_region", { feature, country, subdivision, enabled: box.checked }); await featureRegions(feature); }
+    catch (e) { error.textContent = friendlyError(e); error.hidden = false; box.checked = !box.checked; box.disabled = false; }
+  };
+  const toggle = (title, country, subdivision) => {
+    const box = el("input", { type: "checkbox", checked: has(country, subdivision) });
+    box.addEventListener("change", () => setRegion(box, country, subdivision));
+    return el("li", { class: "cell-pad" }, el("label", { class: "check-row" }, box, ` ${title}`));
+  };
+  const switcher = el("div", { class: "segmented", role: "group", "aria-label": "Feature" },
+    ...[["property", "Real estate"], ["freelance", "Freelance"]].map(([id, title]) => {
+      const b = el("button", { type: "button", "aria-pressed": String(id === feature) }, title);
+      b.addEventListener("click", () => { location.hash = `regions/${id}`; });
+      return b;
+    }));
+  const onNow = regions.map((r) => placeName(r.country, r.subdivision)).sort();
+  const search = el("input", { type: "search", placeholder: "Search countries", "aria-label": "Search countries" });
+  const list = group(...COUNTRIES.map(([code, name]) => code === "US"
+    ? el("li", { "data-name": name.toLowerCase() }, el("details", {}, el("summary", {}, `${name} · ${has("US", "") ? "Whole country" : regions.filter((r) => r.country === "US").length ? `${regions.filter((r) => r.country === "US").length} on` : "Off"}`),
+        group(toggle(`All of ${name}`, "US", ""), ...US_STATES.map(([c, n]) => toggle(n, "US", c)))))
+    : toggle(name, code, "")));
+  list.querySelectorAll(":scope > li").forEach((li, i) => { li.dataset.name = COUNTRIES[i][1].toLowerCase(); });
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    list.querySelectorAll(":scope > li").forEach((li) => { li.hidden = q && !li.dataset.name.includes(q); });
+  });
+  show(back("Where It's Available"), switcher,
+    hint(feature === "property" ? "Where people may list homes for rent and for sale." : "Where people may offer services and post jobs."),
+    error,
+    groupTitle("On now"),
+    onNow.length ? group(...onNow.map((n) => el("li", { class: "cell-pad" }, `✓ ${n}`))) : group(el("li", { class: "cell-pad hint" }, "Nowhere yet")),
+    groupTitle("Countries"),
+    decisionArea(search), list);
+}
+
+// --- One member, for moderators (the app's Moderator Tools card) ------------------------------------------------
+
+const PEOPLE_REASONS = ["Scam or fraud", "Harassment or hate", "Fake account or impersonation", "Prohibited item", "Repeated rule violations", "Other"];
+const USERNAME_REASONS = ["Offensive content", "Harassment or hate", "Fake account or impersonation", "Other"];
+
+/** The app's ModerationActionSheet: a reason, a note for the log, and an optional message to the member. */
+function actionForm({ title, explanation, reasons, actionTitle, template, perform, danger = true }) {
+  const reason = el("select", { "aria-label": "Reason" }, ...reasons.map((r) => el("option", { value: r }, r)));
+  const note = el("textarea", { rows: "2", maxlength: "500", placeholder: "Details for the moderation log (optional)", "aria-label": "Details" });
+  const tell = el("input", { type: "checkbox", checked: true });
+  const message = el("textarea", { rows: "5", maxlength: "5000", "aria-label": "Message" });
+  const fill = () => { message.value = template(reason.value, note.value.trim()); };
+  reason.addEventListener("change", fill); note.addEventListener("input", fill); fill();
+  tell.addEventListener("change", () => { message.hidden = !tell.checked; });
+  const go = el("button", { type: "button", class: danger ? "danger-button" : "" }, actionTitle);
+  const error = errorBox(""); error.hidden = true;
+  return { form: decisionArea(el("strong", {}, title), el("p", { class: "hint" }, explanation), el("label", {}, "Reason", reason), note,
+    hint("Other moderators see this in the activity log."), el("label", { class: "check-row" }, tell, " Tell them why (recommended)"), message,
+    hint("Sent from Geerho Support to their Inbox, where they can reply or appeal."), error, el("div", { class: "actions" }, go)),
+    go, error, run: () => perform(reason.value, note.value.trim(), tell.checked ? message.value.trim() : null) };
+}
+
+async function person(id) {
+  show(back("Member", "#people"), loading());
+  const p = await rpc("admin_person", { target: id });
+  if (!p) { show(back("Member", "#people"), empty("team", "Not found", "This account doesn't exist anymore.")); return; }
+  const name = p.username ? `@${p.username}` : "this member";
+  const notice = el("p", { class: "status good", role: "status", hidden: true });
+  const area = el("div");
+  const reload = async (message) => { await person(id); if (message) { const n = root.querySelector(".status.good"); n.textContent = message; n.hidden = false; } };
+  const open = (form) => { area.replaceChildren(form); form.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  const staffMessage = (body) => rpc("staff_open_ticket", { target: id, reason: "account", body, subject_kind: null, subject_id: null });
+
+  const buttons = [];
+  if (p.suspended) {
+    const b = el("button", { type: "button" }, "Unsuspend");
+    b.addEventListener("click", async () => {
+      if (!(await confirmDialog(`Unsuspend ${name}?`, "They'll be able to list, buy, and message again.", "Unsuspend"))) return;
+      try { await rpc("moderate_user", { target: id, decision: "unsuspend", note: null }); await reload("Suspension lifted."); }
+      catch (e) { alertBox(b, friendlyError(e)); }
+    });
+    buttons.push(b);
+  } else if (!p.is_moderator) {
+    const b = el("button", { type: "button", class: "danger-button" }, "Suspend");
+    b.addEventListener("click", () => {
+      const f = actionForm({ title: `Suspend ${name}`, actionTitle: "Suspend Account", reasons: PEOPLE_REASONS,
+        explanation: "They won't be able to publish listings, buy, or message anyone. They can still contact Geerho Support to appeal.",
+        template: (r, n) => `Your Geerho account has been suspended for: ${r}.${n ? ` ${n}` : ""}\n\nWhile suspended, you can't publish listings, buy, or send messages. If you think this is a mistake, reply here and a moderator will review it.`,
+        perform: async (r, n, m) => { await rpc("moderate_user", { target: id, decision: "suspend", note: [r, n].filter(Boolean).join(": ") }); if (m) await staffMessage(m); } });
+      f.go.addEventListener("click", async () => { f.error.hidden = true; f.go.disabled = true;
+        try { await f.run(); await reload(`${name} was suspended.`); } catch (e) { f.error.textContent = friendlyError(e); f.error.hidden = false; f.go.disabled = false; } });
+      open(f.form);
+    });
+    buttons.push(b);
+  }
+  if (!p.is_moderator) {
+    const b = el("button", { type: "button", class: "secondary" }, "Rename Username");
+    b.addEventListener("click", () => {
+      const f = actionForm({ title: `Rename ${name}`, actionTitle: "Rename", reasons: USERNAME_REASONS,
+        explanation: `Their username becomes a neutral one like @member_12345, and ${name} can't be used again by anyone. They can choose a new username right away.`,
+        template: (r, n) => `We changed your username because it broke the Community Guidelines (${r}).${n ? ` ${n}` : ""}\n\nPlease choose a new one in Profile → Edit Profile → Username; you don't have to wait. If you think this is a mistake, reply here.`,
+        perform: async (r, n, m) => { await rpc("moderator_rename_username", { member: id, reason: [r, n].filter(Boolean).join(": ") }); if (m) await staffMessage(m); } });
+      f.go.addEventListener("click", async () => { f.error.hidden = true; f.go.disabled = true;
+        try { await f.run(); await reload("Username changed."); } catch (e) { f.error.textContent = friendlyError(e); f.error.hidden = false; f.go.disabled = false; } });
+      open(f.form);
+    });
+    buttons.push(b);
+  }
+  const msg = el("button", { type: "button", class: "secondary" }, "Message as Geerho Support");
+  msg.addEventListener("click", () => {
+    const topic = el("select", { "aria-label": "Topic" }, ...Object.entries(REASONS).map(([k, v]) => el("option", { value: k, selected: k === "account" }, v)));
+    const body = el("textarea", { rows: "5", maxlength: "5000", placeholder: "Message", "aria-label": "Message" });
+    const send = el("button", { type: "button" }, "Send");
+    const error = errorBox(""); error.hidden = true;
+    send.addEventListener("click", async () => {
+      if (body.value.trim().length < 10) { error.textContent = "Please write at least 10 characters."; error.hidden = false; return; }
+      send.disabled = true;
+      try { await rpc("staff_open_ticket", { target: id, reason: topic.value, body: body.value.trim(), subject_kind: null, subject_id: null }); await reload("Message sent to their Inbox."); }
+      catch (e) { error.textContent = friendlyError(e); error.hidden = false; send.disabled = false; }
+    });
+    open(decisionArea(el("strong", {}, `Message to ${name}`), el("label", {}, "Topic", topic), body,
+      hint("It arrives in their Inbox from Geerho Support. They can reply there."), error, el("div", { class: "actions" }, send)));
+  });
+  buttons.push(msg);
+  if (role === "owner") {
+    const b = el("button", { type: "button", class: "secondary" }, "Remove Two-Step Verification");
+    b.addEventListener("click", () => {
+      const why = el("textarea", { rows: "2", maxlength: "500", placeholder: "Why (for the log)", "aria-label": "Why" });
+      const go = el("button", { type: "button", class: "danger-button" }, "Remove");
+      const error = errorBox(""); error.hidden = true;
+      go.addEventListener("click", async () => {
+        if (!why.value.trim()) { error.textContent = "Say why, for the log."; error.hidden = false; return; }
+        go.disabled = true;
+        const { data, error: e } = await supabase.functions.invoke("mfa-recover", { body: { action: "admin_remove", member: id, note: why.value.trim() } });
+        if (e || data?.error) { error.textContent = data?.error ?? friendlyError(e); error.hidden = false; go.disabled = false; return; }
+        await reload("Two-step verification removed. They were notified.");
+      });
+      open(decisionArea(el("strong", {}, "Remove two-step verification?"),
+        el("p", { class: "hint" }, "Only after an account recovery proved it's them (a lost phone and no recovery codes). They'll be notified, and it's logged."),
+        why, error, el("div", { class: "actions" }, go)));
+    });
+    buttons.push(b);
+  }
+
+  show(back(name, "#people"), notice,
+    group(kv("Username", p.username ? `@${p.username}` : "—"), kv("ID verified", p.verified ? "Yes" : "No"),
+      kv("Status", p.suspended ? `Suspended${p.suspended_at ? ` since ${dateOnly(p.suspended_at)}` : ""}` : "Active"),
+      p.is_moderator ? kv("Role", "Moderator") : null,
+      p.founding_number ? kv("Founding Member", `#${p.founding_number}`) : null,
+      kv("Joined", dateOnly(p.created_at)), kv("Last active", p.last_active_at ? relative(p.last_active_at) : "—")),
+    group(kv("Listings", `${p.live_listings} live · ${p.removed_listings} removed · ${p.sold_count} sold · ${p.bought_count} bought`),
+      kv("Reports and support", `${p.open_reports} open ${p.open_reports === 1 ? "report" : "reports"} · ${p.tickets_count} support ${p.tickets_count === 1 ? "request" : "requests"}`)),
+    group(linkRow(`member.html?id=${encodeURIComponent(id)}`, "View Public Profile")),
+    groupTitle("Moderator tools"),
+    el("div", { class: "actions wrap-actions" }, ...buttons), area);
+}
+
 async function route() {
   const [name, arg] = location.hash.replace(/^#/, "").split("/");
   try {
@@ -881,6 +1489,16 @@ async function route() {
       case "recovery": return await (arg ? recoveryDetail(arg) : recovery());
       case "overdue": return await overdueRentals();
       case "handbook": return await handbook();
+      case "commission": return commissionRate(Number(arg));
+      case "reset": return await resetTestData();
+      case "team": return await team();
+      case "person": return await person(arg);
+      case "license-rules": return await licenseRules();
+      case "license-rule": return await licenseRule(decodeURIComponent(arg ?? ""));
+      case "regions": return await featureRegions(arg || "property");
+      case "categories": return await categoryRequests();
+      case "propose": return proposeCategory();
+      case "category": return await reviewCategory(arg);
       default: location.hash = "";
     }
   } catch (error) {
