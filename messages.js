@@ -2,6 +2,7 @@
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { el, money, photoURL } from "./site.js";
 import { confirmDialog } from "./ui-dialog.js";
+import { translateButton } from "./translate.js";
 
 const MESSAGE_COLUMNS = "id, conversation_id, sender_id, body, created_at, read_at, is_system, deleted_at, media_path, media_kind, media_width, media_height, media_seconds, media_name, media_bytes, latitude, longitude, place_name";
 const CHAT_BUCKET = "chat-media";
@@ -122,6 +123,8 @@ function messageBubble(message) {
     el("button", { type: "button", class: "link-button" }, "Delete for Me"),
     mine ? el("button", { type: "button", class: "link-button" }, "Delete for Everyone") : null);
   const [forMe, forAll] = menu.querySelectorAll("button");
+  // Translate (2026-10-19, translate.js): shows the translation under the message.
+  if (message.body) menu.append(translateButton(message.body, item.querySelector("p")));
   forMe.addEventListener("click", () => remove(false));
   forAll?.addEventListener("click", () => remove(true));
   item.append(menu);

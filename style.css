@@ -1121,3 +1121,6 @@ details > summary { cursor: pointer; padding: 10px 16px; color: var(--link); fon
 .composer-tool { min-height: 36px; padding: 6px 12px; font-size: 0.9rem; cursor: pointer; }
 .composer-tool.busy { opacity: 0.5; pointer-events: none; }
 .pin-box .panel { display: grid; gap: 8px; margin: 12px 0; } .pin-box input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rule); background: var(--field); color: var(--text); }
+
+/* Translate (2026-10-19) */
+.translation { margin-top: 6px; padding: 8px 10px; border-left: 3px solid var(--accent, #2a7); background: rgba(0,0,0,.03); border-radius: 6px; }

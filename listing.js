@@ -1,4 +1,5 @@
 // Listing page: one listing with photos, price, details, seller, and the address rules for homes.
+import { translateButton } from "./translate.js";
 import { CONDITIONS, areaText, el, featuredUntil, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
   propertyFacts, richText } from "./site.js";
 
@@ -205,7 +206,7 @@ async function render() {
       actions(listing),
       facts(listing, address),
       el("h2", {}, "Description"),
-      richText(listing.description),
+      descriptionWithTranslate(listing),
       seller,
     ),
   );
@@ -283,4 +284,12 @@ async function exactSpot(listing, box) {
   box.replaceChildren(el("div", { class: "panel" }, el("h3", {}, "📍 Exact spot"),
     el("p", { class: "hint" }, `${pin ? "Pinned. " : "Stand at the meeting place and pin it. "}${pinAudience(listing)}`),
     note, problem, el("div", { class: "actions" }, place, pin ? mapLink(pin) : null, remove)));
+}
+
+// Translate (2026-10-19): the description with a Translate button (translate.js).
+function descriptionWithTranslate(listing) {
+  const body = richText(listing.description);
+  const wrap = el("div", {}, body);
+  if (listing.description) wrap.append(translateButton(`${listing.title}\n\n${listing.description}`, body));
+  return wrap;
 }
