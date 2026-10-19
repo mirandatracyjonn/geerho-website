@@ -134,7 +134,8 @@ async function renderHub() {
     follows ? el("li", { class: "plain" }, el("div", { class: "follow-bar" },
       ...[["followers", "Followers"], ["following", "Following"], ["contacts", "Contacts"]].map(([key, label]) =>
         el("a", { href: `#follows-${key}` }, el("strong", {}, String(follows[key] ?? 0)), el("span", {}, label))))) : null,
-    el("li", { class: "plain" }, invite));
+    el("li", { class: "plain" }, invite),
+    walletRows());
 
   const main = el("ul", { class: "group" }, MAIN_ROWS.map(([target, title, i, tint]) => navRow(target, title, i, tint)));
   const more = el("ul", { class: "group" }, MORE_ROWS.map(([target, title, i, tint]) =>
@@ -305,4 +306,29 @@ export async function startProfile(user, profile, rerender) {
     window.addEventListener("hashchange", route);
   }
   await route();
+}
+
+// Member card in Apple Wallet / Google Wallet (2026-10-19, like the apps): shown only when set up on the server.
+function walletRows() {
+  const li = el("li", { class: "plain", hidden: true });
+  const base = "https://zdumomkbwgognuehsgtq.supabase.co/functions/v1/wallet-pass";
+  fetch(base).then((r) => r.json()).then(async (status) => {
+    const apple = status.apple && /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+    if (!apple && !status.google) return;
+    const token = (await supabase.auth.getSession()).data.session?.access_token;
+    const add = (label, kind) => {
+      const b = el("button", { type: "button", class: "row link-row" }, el("span", { class: "row-title" }, label));
+      b.addEventListener("click", async () => {
+        const r = await fetch(base, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ kind }) });
+        if (!r.ok) { b.textContent = "Couldn't make your card. Try again."; return; }
+        if (kind === "google") { location.href = (await r.json()).url; return; }
+        location.href = URL.createObjectURL(new Blob([await r.arrayBuffer()], { type: "application/vnd.apple.pkpass" }));
+      });
+      li.append(b);
+    };
+    if (apple) add("Add to Apple Wallet", "apple");
+    if (status.google) add("Save to Google Wallet", "google");
+    li.hidden = false;
+  }).catch(() => {});
+  return li;
 }
