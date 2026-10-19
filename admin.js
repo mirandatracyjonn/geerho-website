@@ -215,7 +215,7 @@ async function overview() {
     group(
       stat("Commission earned", usd(o.commission_earned_cents), { detail: "Geerho isn't charging fees yet", iconName: "dollar", tint: "gray" }),
       stat("Fees waived", usd(o.fees_waived_cents), { detail: owner ? `At ${pct} of sales · change the rate` : `At ${pct} of sales`, iconName: "dollar", tint: "purple", href: owner ? `#commission/${o.commission_rate}` : null }),
-      stat("Founding Members", `${o.founding_used} of ${o.founding_limit}`, { detail: `${Math.max(o.founding_limit - o.founding_used, 0)} free spots left · ${o.lifetime_free} owners free for life`, iconName: "star", tint: "orange", href: "#people/founding" }),
+      stat("Founding Members", `${o.founding_used} of ${o.founding_limit}`, { detail: `${Math.max(o.founding_limit - o.founding_used, 0)} free spots left (the Founder holds an extra #0)`, iconName: "star", tint: "orange", href: "#people/founding" }),
     ),
     groupTitle("Team, categories, and settings"),
     group(
