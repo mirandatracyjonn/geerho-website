@@ -1124,3 +1124,9 @@ details > summary { cursor: pointer; padding: 10px 16px; color: var(--link); fon
 
 /* Translate (2026-10-19) */
 .translation { margin-top: 6px; padding: 8px 10px; border-left: 3px solid var(--accent, #2a7); background: rgba(0,0,0,.03); border-radius: 6px; }
+
+/* Moderator Handbook quiz (admin.html#handbook-quiz, M137) */
+fieldset.group.plain { border: 0; margin: 0 0 12px; }
+fieldset.group.plain legend { font-weight: 600; font-size: 0.85em; color: var(--secondary-label, #6e6e73); padding: 0; }
+label.choice { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
+label.choice input { margin-top: 3px; }

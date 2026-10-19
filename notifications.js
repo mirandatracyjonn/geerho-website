@@ -8,7 +8,7 @@ const status = document.getElementById("status");
 const list = document.getElementById("list");
 const markAll = document.getElementById("mark-all");
 
-const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨", live: "🔴" };
+const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨", live: "🔴", moderator_handbook: "📘" };
 
 function linkFor(item) {
   switch (item.target) {
@@ -21,6 +21,7 @@ function linkFor(item) {
     case "watching": return "account.html#watching";
     case "licenses": return "account.html#licenses";
     case "security": return "account.html#security";
+    case "moderator_handbook": return "admin.html#handbook";
     case "profile": return `member.html?id=${encodeURIComponent(item.target_id)}`;
     default: return null;
   }

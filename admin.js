@@ -852,12 +852,74 @@ function cleanHTML(node) {
 async function handbook() {
   show(back("Moderator Handbook"), loading());
   try {
-    const html = await rpc("moderator_handbook");
+    const [html, status] = await Promise.all([rpc("moderator_handbook"), rpc("moderator_handbook_status").catch(() => null)]);
     const doc = new DOMParser().parseFromString(html ?? "", "text/html");
-    show(back("Moderator Handbook"), el("article", { class: "handbook prose" }, cleanHTML(doc.body)));
+    const title = status ? `Moderator Handbook · v${status.version}` : "Moderator Handbook";
+    show(back(title), ...(status ? handbookStatus(status) : []), el("article", { class: "handbook prose" }, cleanHTML(doc.body)));
   } catch (error) {
     show(back("Moderator Handbook"), errorBox(friendlyError(error)));
   }
+}
+
+// Versions and the quiz (M137): what changed, passed or due, and the quiz (graded on the server).
+function handbookStatus(status) {
+  const line = status.passed ? ["You passed this version's quiz.", "good"]
+    : status.is_super_admin ? ["Super Admins don't need the quiz.", "info"]
+    : status.paused ? ["Your moderator tools are paused until you pass the quiz.", "bad"]
+    : status.due_at ? [`Pass the quiz by ${dateOnly(status.due_at)} to keep using moderator tools.`, "warn"] : null;
+  const rows = [];
+  if (status.changes) rows.push(el("li", { class: "cell-pad" }, el("strong", {}, `What changed in version ${status.version}: `), status.changes));
+  if (line) rows.push(el("li", { class: "cell-pad" }, el("span", { class: `status ${line[1]}` }, line[0])));
+  if (status.quiz_version) rows.push(linkRow("#handbook-quiz", status.passed || status.is_super_admin ? "Practice the Quiz" : "Take the Quiz",
+    `${status.pass_mark} of ${status.questions.length} right passes`));
+  if (status.is_super_admin) rows.push(linkRow("#handbook-progress", "Who Has Passed", "Every moderator's quiz for this version"));
+  return rows.length ? [group(...rows)] : [];
+}
+
+async function handbookQuiz() {
+  show(back("Handbook Quiz", "#handbook"), loading());
+  const status = await rpc("moderator_handbook_status");
+  if (!status.quiz_version) { location.hash = "handbook"; return; }
+  const picks = {};
+  const blocks = status.questions.map((q) => el("fieldset", { class: "group plain cell-pad" },
+    el("legend", {}, `Question ${q.position}`), el("p", {}, el("strong", {}, q.question)),
+    ...q.choices.map((choice, i) => {
+      const radio = el("input", { type: "radio", name: `q${q.position}`, value: String(i) });
+      radio.addEventListener("change", () => { picks[q.position] = i; check.disabled = Object.keys(picks).length < status.questions.length; });
+      return el("label", { class: "choice" }, radio, " ", choice);
+    })));
+  const error = errorBox(""); error.hidden = true;
+  const check = el("button", { type: "button", disabled: true }, "Check My Answers");
+  check.addEventListener("click", async () => {
+    check.disabled = true; error.hidden = true;
+    try {
+      const r = await rpc("submit_moderator_quiz", { version: status.quiz_version, answers: status.questions.map((q) => picks[q.position] ?? -1) });
+      const again = el("button", { type: "button" }, "Try Again");
+      again.addEventListener("click", () => handbookQuiz());
+      show(back("Handbook Quiz", "#handbook"),
+        group(el("li", { class: "cell-pad" }, el("span", { class: `status ${r.passed ? "good" : "bad"}` },
+          r.passed ? `Passed: ${r.score} of ${r.total}` : `${r.score} of ${r.total}. You need ${r.pass_mark}.`))),
+        ...(r.missed.length ? [groupTitle("What to reread"), group(...r.missed.map((m) => el("li", { class: "cell-pad" },
+          el("p", {}, el("strong", {}, m.question)), el("p", { class: "muted" }, m.why))))] : []),
+        el("div", { class: "actions" }, r.passed ? el("a", { class: "button", href: "#handbook" }, "Done")
+          : again));
+    } catch (e) {
+      error.textContent = friendlyError(e); error.hidden = false; check.disabled = false;
+    }
+  });
+  show(back(`Handbook Quiz · v${status.quiz_version}`, "#handbook"), ...blocks,
+    hint(`${status.pass_mark} of ${status.questions.length} right passes. Answers are checked by Geerho's server.`),
+    decisionArea(error, el("div", { class: "actions" }, check)));
+}
+
+async function handbookProgress() {
+  if (role !== "owner") { location.hash = "handbook"; return; }
+  show(back("Who Has Passed", "#handbook"), loading());
+  const rows = await rpc("moderator_handbook_progress");
+  show(back("Who Has Passed", "#handbook"), group(...(rows ?? []).map((r) => el("li", { class: "cell-pad" },
+    el("strong", {}, at(r.username, "moderator")), " · ",
+    r.role === "owner" ? "Super Admin (exempt)" : r.passed ? `Passed ${dateOnly(r.passed_at)}`
+      : r.paused ? `Paused · ${r.tries} tries` : `Due ${dateOnly(r.due_at)} · ${r.tries} tries`))));
 }
 
 // --- Routing ---------------------------------------------------------------------------------------------------------
@@ -1489,6 +1551,8 @@ async function route() {
       case "recovery": return await (arg ? recoveryDetail(arg) : recovery());
       case "overdue": return await overdueRentals();
       case "handbook": return await handbook();
+      case "handbook-quiz": return await handbookQuiz();
+      case "handbook-progress": return await handbookProgress();
       case "commission": return commissionRate(Number(arg));
       case "reset": return await resetTestData();
       case "team": return await team();
