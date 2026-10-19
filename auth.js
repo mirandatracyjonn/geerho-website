@@ -143,3 +143,15 @@ toTop.addEventListener("click", () => {
   // Keyboard users continue from the top of the page.
   document.querySelector(".site-header .brand")?.focus({ preventScroll: true });
 });
+
+// A link to a FAQ answer (faq.html#full-price, from the home page's "Built for trust"): open that answer and show it.
+function openLinkedAnswer() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const target = id && document.getElementById(id);
+  if (target instanceof HTMLDetailsElement) {
+    target.open = true;
+    target.scrollIntoView({ block: "start" });
+  }
+}
+openLinkedAnswer();
+window.addEventListener("hashchange", openLinkedAnswer);

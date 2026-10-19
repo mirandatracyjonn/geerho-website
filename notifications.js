@@ -23,7 +23,9 @@ function linkFor(item) {
     case "security": return "account.html#security";
     case "moderator_handbook": return "admin.html#handbook";
     case "profile": return `member.html?id=${encodeURIComponent(item.target_id)}`;
-    default: return null;
+    case "beta": return "beta.html";
+    // Anything else: the full message is already shown here; Geerho Support notices open Support.
+    default: return item.kind === "support" ? "contact.html" : null;
   }
 }
 

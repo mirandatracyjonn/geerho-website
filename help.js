@@ -52,5 +52,7 @@ if (error) status.textContent = "Couldn't load the handbook. Check your connecti
 articles = data ?? [];
 input.value = new URLSearchParams(location.search).get("q") ?? "";
 render();
+// A link to one article (help.html#how-does-reputation-work-on-geerho): it opens above; bring it into view.
+if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ block: "start" });
 input.addEventListener("input", render);
 document.getElementById("help-form").addEventListener("submit", (event) => event.preventDefault());
