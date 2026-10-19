@@ -2,12 +2,28 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["P5G566MD9G.com.geerho.app"],
+        "appIDs": [
+          "P5G566MD9G.com.geerho.app"
+        ],
         "components": [
-          { "/": "/l/*", "comment": "Shared listing links open the listing in the app" },
-          { "/": "/listing.html", "?": { "id": "?*" }, "comment": "Listing pages open in the app" }
+          {
+            "/": "/l/*",
+            "comment": "Shared listing links open the listing in the app"
+          },
+          {
+            "/": "/listing.html",
+            "?": {
+              "id": "?*"
+            },
+            "comment": "Listing pages open in the app"
+          }
         ]
       }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "P5G566MD9G.com.geerho.app"
     ]
   }
 }

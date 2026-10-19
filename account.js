@@ -66,6 +66,19 @@ for (const button of document.querySelectorAll("button.provider")) {
   });
 }
 
+// Passkeys (2026-10-19): for members who added one in Settings → Security; the session arrives through
+// onAuthStateChange (SIGNED_IN), like the other sign-ins.
+document.getElementById("passkey-sign-in")?.addEventListener("click", async () => {
+  const error = document.getElementById("sign-in-error");
+  error.hidden = true;
+  const { error: problem } = await supabase.auth.signInWithPasskey();
+  if (problem && !/abort|cancel|not allowed/i.test(problem.message ?? "")) {
+    error.textContent = /support/i.test(problem.message ?? "") ? "This browser doesn't support passkeys. Use Apple, Google or GitHub."
+      : `We couldn't sign you in with a passkey: ${friendlyError(problem)}`;
+    error.hidden = false;
+  }
+});
+
 // --- Username -----------------------------------------------------------------------------------------------
 
 function setupUsername(user) {

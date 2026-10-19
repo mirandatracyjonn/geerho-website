@@ -157,6 +157,28 @@ export async function renderSecurity(cell) {
   }
   rows.push(actions);
 
+  // Passkeys (first-factor sign-in, 2026-10-19): add, list, remove. Same passkeys as the Geerho apps.
+  rows.push(el("strong", { class: "mfa-sub" }, "Passkeys"),
+    el("p", { class: "hint" }, "Sign in with Face ID, Touch ID, Windows Hello or your phone instead of Apple, Google or GitHub."));
+  const { data: keys } = await supabase.auth.passkey.list();
+  for (const key of keys ?? []) {
+    const remove = el("button", { type: "button", class: "secondary" }, "Remove");
+    remove.addEventListener("click", async () => {
+      const { error: e } = await supabase.auth.passkey.delete({ passkeyId: key.id });
+      if (e) return fail(e);
+      renderSecurity(cell);
+    });
+    rows.push(el("div", { class: "mfa-row" },
+      el("span", {}, `${key.friendly_name ?? "Passkey"} · ${key.last_used_at ? `used ${new Date(key.last_used_at).toLocaleDateString()}` : "not used yet"}`), remove));
+  }
+  const addKey = el("button", { type: "button" }, "Add a Passkey");
+  addKey.addEventListener("click", async () => {
+    const { error: e } = await supabase.auth.registerPasskey();
+    if (e && !/abort|cancel|not allowed/i.test(e.message ?? "")) return fail(/support/i.test(e.message ?? "") ? "This browser doesn't support passkeys." : e);
+    renderSecurity(cell);
+  });
+  rows.push(el("div", { class: "actions" }, addKey));
+
   // Super Admins: moderator and Super Admin tools need a two-step sign-in (the apps' "Require for Staff").
   const { data: role } = await supabase.rpc("my_moderation_role");
   if (role === "owner") {

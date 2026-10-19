@@ -1,0 +1,24 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.geerho.app",
+      "sha256_cert_fingerprints": [
+        "59:D2:1A:FF:F8:B2:46:F3:3B:38:02:4B:3A:3C:C7:27:76:B7:9F:65:8B:FE:41:90:CE:AD:E2:6E:02:D1:5C:6F"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "web",
+      "site": "https://geerho.com"
+    }
+  }
+]
