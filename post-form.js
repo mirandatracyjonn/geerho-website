@@ -359,6 +359,29 @@ export async function postForm(root, typeKey, { editId = null, me }) {
   const travel = textInput(row?.travel_radius_km ? String(metric() ? row.travel_radius_km : Math.round(row.travel_radius_km / 1.609344)) : "25", { inputmode: "numeric" });
   const years = textInput(row?.years_experience ?? "", { inputmode: "numeric" });
   const description = descriptionEditor(row?.description);
+  // AI listing writer (2026-10-19, "free on-device only"): Chrome's built-in AI (Prompt API) where the browser has it;
+  // the button doesn't show elsewhere. Uses only what the seller typed; they check it before posting.
+  const aiButton = el("button", { type: "button", class: "secondary", hidden: true }, "✨ Write with your browser's AI");
+  const aiNote = el("p", { class: "hint", hidden: true }, "Type a few notes (brand, size, age, flaws), then tap Write. It uses only what you wrote; check it before you post.");
+  if ("LanguageModel" in self) {
+    self.LanguageModel.availability().then((a) => { if (a && a !== "unavailable") { aiButton.hidden = false; aiNote.hidden = false; } }).catch(() => {});
+  }
+  aiButton.addEventListener("click", async () => {
+    aiButton.disabled = true; aiButton.textContent = "Writing…";
+    try {
+      const session = await self.LanguageModel.create({ initialPrompts: [{ role: "system", content:
+        "You help people write listings for Geerho, a local marketplace. Write a short, clear, friendly title (under 70 characters) and a description of 2 to 5 short paragraphs or bullet points. Use ONLY the facts given. Never invent brands, sizes, specs, prices, defects or history. If something important is missing (size, brand, age, flaws), end with one line asking the seller to add it. No emojis, no hashtags, no prices. Answer exactly as:\nTITLE: <title>\nDESCRIPTION:\n<description>" }] });
+      const pickedCategory = category.options?.[category.selectedIndex]?.text;
+      const text = await session.prompt(`Title so far: ${title.value || "(none)"}\nCategory: ${pickedCategory || "(not chosen)"}\nSeller's notes: ${description.area.value || "(none)"}`);
+      const newTitle = /TITLE:\s*(.+)/.exec(text)?.[1]?.trim();
+      const body = text.split("DESCRIPTION:")[1]?.trim();
+      if (!body) throw new Error("no text");
+      if (title.value.trim().length < 4 && newTitle) title.value = newTitle.slice(0, 80);
+      description.area.value = body.slice(0, 5000);
+      description.area.dispatchEvent(new Event("input"));
+    } catch { aiNote.textContent = "Your browser's AI couldn't write this right now. Try again, or write it yourself."; }
+    aiButton.disabled = false; aiButton.textContent = "✨ Write with your browser's AI";
+  });
   const pickup = check("Local pickup", row ? row.offers_pickup : true);
   const shipping = check("Shipping", !!row?.offers_shipping);
   const shippingFee = moneyInput(row?.shipping_fee_cents, row?.currency);
@@ -419,7 +442,7 @@ export async function postForm(root, typeKey, { editId = null, me }) {
     isFreelance ? section(typeKey === "service" ? "Your rate" : "Budget", el("div", { class: "form-row" }, rateType),
       field(typeKey === "service" ? "Your rate" : "Budget", price, "Every post shows its full price; “by quote” isn't allowed when publishing."),
       el("div", { class: "form-row" }, remote.row), typeKey === "service" ? [travelRow, field("Years of experience (optional)", years)] : null) : null,
-    section("Description", el("div", { class: "form-row" }, description.node)),
+    section("Description", el("div", { class: "form-row" }, description.node, aiButton, aiNote)),
     isItem && !isTool ? section("Delivery", el("div", { class: "form-row" }, pickup.row), el("div", { class: "form-row" }, shipping.row), shippingRows) : null,
     isTool ? section("Lending", el("small", { class: "form-hint form-row" }, "Tool rentals are local pickup only. Renters outside your lending radius can see it but can't request it."),
       el("div", { class: "form-row" }, lending.row)) : null,
