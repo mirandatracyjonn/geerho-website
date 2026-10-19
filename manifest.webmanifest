@@ -10,7 +10,50 @@
   "background_color": "#ffffff",
   "theme_color": "#5a6ff4",
   "icons": [
-    { "src": "app-icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "app-icon-large.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "app-icon-large.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search Geerho",
+      "short_name": "Search",
+      "url": "/browse.html",
+      "icons": [
+        {
+          "src": "app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Post a listing",
+      "short_name": "Post",
+      "url": "/post.html",
+      "icons": [
+        {
+          "src": "app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "url": "/messages.html",
+      "icons": [
+        {
+          "src": "app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
