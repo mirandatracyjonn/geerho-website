@@ -107,7 +107,9 @@ async function renderHub() {
   ]);
   const r = Array.isArray(rating) ? rating[0] : rating;
   const f = fee?.[0];
-  const badge = f?.founder ? "Founder" : f?.plan === "lifetime" ? "Owner · No fees for life" : f?.plan === "founding" ? `Founding Member #${f.founding_number ?? 0} · No commission` : null;
+  // M116: the Founder is also a Founding Member (#0, shown without a number).
+  const founding = f?.plan === "founding" ? (f.founding_number === 0 ? "Founding Member" : `Founding Member #${f.founding_number ?? 0}`) : null;
+  const badge = f?.founder ? ["Founder", founding].filter(Boolean).join(" · ") : f?.plan === "lifetime" ? "Owner · No fees for life" : founding ? `${founding} · No commission` : null;
   const settings = el("a", { class: "icon-button", href: "#settings", "aria-label": "Settings" }, icon("gear"));
 
   const verified = verification.data?.[0]?.status === "verified";
