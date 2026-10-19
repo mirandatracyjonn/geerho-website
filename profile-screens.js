@@ -198,10 +198,11 @@ async function purchases(ctx) {
 
 async function sales(ctx) {
   const { data, error } = await supabase.from("sales")
-    .select("id, listing_id, buyer_id, listing_title, price_cents, currency, delivery, carrier, shipping_fee_cents, tracking_number, tracking_due_at, shipped_at, received_at, reference, created_at, listing:listings(country, shipping_carriers, listing_photos(storage_path, position))")
-    .eq("seller_id", ctx.me.id).order("created_at", { ascending: false }).limit(100);
+    .select("id, listing_id, seller_id, buyer_id, listing_title, price_cents, currency, delivery, carrier, shipping_fee_cents, tracking_number, tracking_due_at, shipped_at, received_at, reference, created_at, listing:listings(country, shipping_carriers, listing_photos(storage_path, position))")
+    .order("created_at", { ascending: false }).limit(100);
   if (error) throw error;
-  const all = data ?? [];
+  // Mine, plus (Team v2) sales of team listings I posted, which are my Elite's.
+  const all = (data ?? []).filter((s) => s.seller_id && s.buyer_id !== ctx.me.id);
   if (!all.length) return [empty("tag", "No sales yet", "Items you sell show up here, with tracking to add for shipped orders.")];
   const filter = ctx.state.salesFilter ?? "all";
   const needs = all.filter((s) => s.delivery === "shipping" && !s.tracking_number);
@@ -212,7 +213,8 @@ async function sales(ctx) {
       : shipping && !s.tracking_number ? [`Add tracking${s.tracking_due_at ? ` by ${dayTime(s.tracking_due_at)}` : ""}`, "warn"]
       : shipping ? [`Shipped · ${CARRIERS[s.carrier] ?? ""} ${s.tracking_number}`, "info"] : ["Sold · local pickup", "info"];
     const parts = [itemRow(`listing.html?id=${s.listing_id}`, cover(s.listing?.listing_photos), s.listing_title,
-      [money(s.price_cents + (s.shipping_fee_cents ?? 0), s.currency), s.reference, shortDate(s.created_at)].filter(Boolean).join(" · "), state, tone)];
+      [money(s.price_cents + (s.shipping_fee_cents ?? 0), s.currency), s.reference, shortDate(s.created_at),
+        s.seller_id !== ctx.me.id ? "For your Elite (paid to them)" : null].filter(Boolean).join(" · "), state, tone)];
     if (shipping && !s.tracking_number) {
       const carrier = carrierPicker(s.listing?.country, s.listing?.shipping_carriers);
       if (s.carrier) carrier.value = s.carrier;
@@ -237,10 +239,10 @@ async function requests(ctx) {
   const now = new Date().toISOString();
   const [{ data: orders }, { data: rentals }, { data: tours }, { data: jobs }] = await Promise.all([
     supabase.from("orders").select("id, listing_id, buyer_id, delivery, listing_title, price_cents, shipping_fee_cents, currency, ship_to, note, respond_by, listing:listings(country, shipping_carriers)")
-      .eq("seller_id", me).eq("status", "requested").gt("respond_by", now).order("respond_by"),
+      .neq("buyer_id", me).eq("status", "requested").gt("respond_by", now).order("respond_by"),
     supabase.from("rental_bookings").select("id, listing_id, renter_id, listing_title, start_date, end_date, days, rent_cents, deposit_cents, currency, note, respond_by")
-      .eq("owner_id", me).eq("status", "requested").gt("respond_by", now).order("respond_by"),
-    supabase.from("tour_requests").select("id, listing_id, requester_id, listing_title, options, note").eq("owner_id", me).eq("status", "requested"),
+      .neq("renter_id", me).eq("status", "requested").gt("respond_by", now).order("respond_by"),
+    supabase.from("tour_requests").select("id, listing_id, requester_id, listing_title, options, note").neq("requester_id", me).eq("status", "requested"),
     supabase.rpc("my_job_responses"),
   ]);
   const jobRows = (jobs ?? []).filter((j) => j.poster_id === me && j.status === "sent");
@@ -323,7 +325,7 @@ function standing(l) {
 async function listings(ctx) {
   const { data, error } = await supabase.from("listings")
     .select("id, title, price_cents, currency, kind, listing_format, status, expires_at, hidden_at, auction_state, current_bid_cents, bid_count, rate_type, offers_pickup, offers_shipping, shipping_carriers, shipping_fee_cents, listing_photos(storage_path, position)")
-    .eq("seller_id", ctx.me.id).order("created_at", { ascending: false }).limit(200);
+    .or(`seller_id.eq.${ctx.me.id},posted_by.eq.${ctx.me.id}`).order("created_at", { ascending: false }).limit(200);
   if (error) throw error;
   const tab = ctx.state.listingsTab ?? "active";
   const all = data ?? [];
@@ -513,7 +515,7 @@ async function rentals(ctx) {
   if (error) throw error;
   const all = data ?? [];
   if (!all.length) return [empty("wrench", "No rentals yet", "Tools you rent, and rentals of your tools, show up here.")];
-  const shown = all.filter((b) => (side === "lending" ? b.owner_id === me : b.renter_id === me));
+  const shown = all.filter((b) => (side === "lending" ? b.owner_id && b.renter_id !== me : b.renter_id === me));
   const ids = shown.map((b) => b.id);
   const [{ data: pays }, { data: photos }, { data: reviews }] = ids.length ? await Promise.all([
     supabase.from("payments").select("rental_booking_id, status").in("rental_booking_id", ids),
@@ -523,7 +525,7 @@ async function rentals(ctx) {
   const payFor = Object.fromEntries((pays ?? []).map((p) => [p.rental_booking_id, p.status]));
   const reviewed = new Set((reviews ?? []).map((r) => r.rental_booking_id));
   const rows = shown.map((b) => {
-    const owner = b.owner_id === me;
+    const owner = b.renter_id !== me; // the owner, or the team member who posted it
     const status = b.status === "requested" && new Date(b.respond_by) < new Date() ? "expired" : b.status;
     const [state, tone] = rentalStatus(b, owner);
     const pay = payFor[b.id];
@@ -583,9 +585,9 @@ async function tours(ctx) {
         button("Cancel Tour", confirmThen(ctx, "Cancel this tour?", "The other person is told.", "Cancel Tour", () => supabase.rpc("cancel_tour", { tour: t.id }), { danger: true }), "secondary")) : null);
   };
   return [
-    group(all.filter((t) => t.owner_id === me && t.status === "requested").map(row), "Waiting for your answer"),
+    group(all.filter((t) => t.requester_id !== me && t.status === "requested").map(row), "Waiting for your answer"),
     group(all.filter((t) => t.requester_id === me).map(row), "Homes you want to see"),
-    group(all.filter((t) => t.owner_id === me && t.status !== "requested").map(row), "Your homes"),
+    group(all.filter((t) => t.requester_id !== me && t.status !== "requested").map(row), "Your homes"),
   ];
 }
 

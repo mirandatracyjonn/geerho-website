@@ -80,12 +80,13 @@ async function showModeration() {
   document.getElementById("review-count").textContent = queue?.length ? String(queue.length) : "";
 }
 
+// Seller-side counts: mine, plus (Team v2) team listings I posted. The server only returns those, so "not the buyer" is enough.
 async function counts(userId) {
   const now = new Date().toISOString();
   const [orders, rentals, tours, jobs, bids] = await Promise.all([
-    supabase.from("orders").select("id", { count: "exact", head: true }).eq("seller_id", userId).eq("status", "requested").gt("respond_by", now),
-    supabase.from("rental_bookings").select("id", { count: "exact", head: true }).eq("owner_id", userId).eq("status", "requested"),
-    supabase.from("tour_requests").select("id", { count: "exact", head: true }).eq("owner_id", userId).eq("status", "requested"),
+    supabase.from("orders").select("id", { count: "exact", head: true }).neq("buyer_id", userId).eq("status", "requested").gt("respond_by", now),
+    supabase.from("rental_bookings").select("id", { count: "exact", head: true }).neq("renter_id", userId).eq("status", "requested"),
+    supabase.from("tour_requests").select("id", { count: "exact", head: true }).neq("requester_id", userId).eq("status", "requested"),
     supabase.rpc("my_job_responses"),
     supabase.rpc("my_bids"),
   ]);
