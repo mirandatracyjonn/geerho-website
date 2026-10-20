@@ -225,7 +225,9 @@ async function overview() {
       owner ? stat("Where it's available", "Regions", { detail: "Real estate and freelance by country and state", iconName: "house", tint: "teal", href: "#regions" }) : null,
     ),
     owner ? groupTitle("Before launch") : null,
-    owner ? group(stat("Delete beta test data", "Reset", { detail: "Keeps accounts, usernames, ID verifications, and the posts you choose", iconName: "trash", tint: "red", href: "#reset" })) : null,
+    owner ? group(
+      stat("Launch waitlist", "People", { detail: "Emails from geerho.com: who wants to know when we open, and where", iconName: "star", tint: "green", href: "#waitlist" }),
+      stat("Delete beta test data", "Reset", { detail: "Keeps accounts, usernames, ID verifications, and the posts you choose", iconName: "trash", tint: "red", href: "#reset" })) : null,
     groupTitle("Moderators"),
     group(linkRow("#handbook", "Moderator Handbook", "How to review each queue, step by step")),
   );
@@ -922,6 +924,36 @@ async function handbookProgress() {
       : r.paused ? `Paused · ${r.tries} tries` : `Due ${dateOnly(r.due_at)} · ${r.tries} tries`))));
 }
 
+// --- Launch waitlist (M146): counts by place and the CSV for launch emails (Super Admins) ----------------------------
+
+async function waitlist() {
+  if (role !== "owner") { location.hash = ""; return; }
+  show(back("Launch Waitlist"), loading());
+  const s = await rpc("waitlist_summary");
+  const download = el("button", { type: "button" }, "Download CSV");
+  const error = errorBox(""); error.hidden = true;
+  download.addEventListener("click", async () => {
+    download.disabled = true;
+    try {
+      const rows = await rpc("waitlist_export");
+      const cell = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+      const lines = [["email", "city", "region", "country", "interest", "joined_at", "unsubscribe_link"].join(",")]
+        .concat((rows ?? []).map((r) => [r.email, r.city, r.region, r.country, r.interest, r.joined_at,
+          `https://geerho.com/waitlist.html?leave=${r.unsubscribe_token}`].map(cell).join(",")));
+      const link = el("a", { href: URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" })), download: "geerho-waitlist.csv" });
+      document.body.append(link); link.click(); link.remove();
+    } catch (e) { error.textContent = friendlyError(e); error.hidden = false; }
+    download.disabled = false;
+  });
+  show(back("Launch Waitlist"),
+    group(kv("On the list", String(s.total)), kv("Joined in the last 7 days", String(s.last_7_days)),
+      kv("Want to sell", String(s.sellers)), kv("Unsubscribed", String(s.left))),
+    groupTitle("Where they are"),
+    s.places.length ? group(...s.places.map((p) => kv(p.place, String(p.count)))) : group(el("li", { class: "cell-pad" }, "Nobody yet")),
+    hint("Each row in the CSV has the person's own unsubscribe link: put it in every email (US law, CAN-SPAM). Keep the file private and delete it after sending."),
+    decisionArea(error, el("div", { class: "actions" }, download)));
+}
+
 // --- Routing ---------------------------------------------------------------------------------------------------------
 
 // --- Owner: commission rate and deleting beta test data (same as the app's sheets) -----------------------------------
@@ -1551,6 +1583,7 @@ async function route() {
       case "recovery": return await (arg ? recoveryDetail(arg) : recovery());
       case "overdue": return await overdueRentals();
       case "handbook": return await handbook();
+      case "waitlist": return await waitlist();
       case "handbook-quiz": return await handbookQuiz();
       case "handbook-progress": return await handbookProgress();
       case "commission": return commissionRate(Number(arg));

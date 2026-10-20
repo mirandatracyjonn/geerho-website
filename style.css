@@ -1144,3 +1144,12 @@ label.choice input { margin-top: 3px; }
 .trust-card h3 { margin: 0 0 8px; }
 .trust-card ul { margin: 8px 0; padding-left: 20px; }
 .trust-card .card-link { font-weight: 600; }
+
+/* Launch waitlist (waitlist.html and the home page, M146) */
+.waitlist-form { display: grid; gap: 10px; max-width: 560px; }
+.waitlist-form .wl-row { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 520px) { .waitlist-form .wl-row { grid-template-columns: 1fr; } }
+.waitlist-form .wl-consent { display: flex; gap: 8px; align-items: flex-start; font-size: 0.92rem; }
+.waitlist-form .wl-consent input { margin-top: 3px; }
+.wl-trap { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; }
+.waitlist-band { margin-top: 48px; background: var(--surface); border-radius: 16px; padding: 8px 24px 24px; }
