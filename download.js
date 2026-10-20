@@ -15,3 +15,12 @@ if (APP_STORE_URL || TESTFLIGHT_URL) {
     ? "Geerho is free on the App Store for iPhone."
     : "Geerho is in public beta. Join on your iPhone with Apple's free TestFlight app.";
 }
+
+// Android phones (the app's Update button sends them here): say how Android testers update, first (TJ, 2026-10-19:
+// "it goes to the website which only have ios join the testflight").
+if (/Android/i.test(navigator.userAgent)) {
+  document.querySelector("h1").textContent = "Get Geerho for Android";
+  document.getElementById("availability").textContent =
+    "Geerho's Android beta comes through Google's free Firebase App Tester app. Open App Tester, tap Geerho, then Download or Update.";
+  links.replaceChildren(el("a", { class: "button", href: "#android" }, "How to install or update on Android"));
+}
