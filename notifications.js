@@ -8,7 +8,7 @@ const status = document.getElementById("status");
 const list = document.getElementById("list");
 const markAll = document.getElementById("mark-all");
 
-const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨", live: "🔴", moderator_handbook: "📘" };
+const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨", live: "🔴", moderator_handbook: "📘", invite: "🎁" };
 
 function linkFor(item) {
   switch (item.target) {
@@ -18,6 +18,7 @@ function linkFor(item) {
     case "live": return `live.html?show=${encodeURIComponent(item.target_id)}`;
     // Same places as the app (NotificationsView): Profile → Team, Watching, Professional Licenses; Settings → Security; a member's profile.
     case "team": return "account.html#team";
+    case "invites": return "account.html#invites";
     case "watching": return "account.html#watching";
     case "licenses": return "account.html#licenses";
     case "security": return "account.html#security";

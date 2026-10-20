@@ -129,8 +129,8 @@ async function renderHub() {
     p.bio ? el("p", { class: "bio" }, p.bio) : null,
     el("a", { class: "edit", href: "#edit" }, icon("pencil"), "Edit Profile"));
 
-  const invite = el("button", { type: "button", class: "row link-row" }, rowIcon("invite", "accent"), el("span", { class: "row-title" }, "Invite to Geerho"));
-  invite.addEventListener("click", () => inviteFriends(p.username, invite));
+  // Invite Friends (M142): share, say who invited you, and free sales.
+  const invite = el("a", { class: "row link-row", href: "#invites" }, rowIcon("invite", "accent"), el("span", { class: "row-title" }, "Invite Friends"));
   const followGroup = el("ul", { class: "group" },
     follows ? el("li", { class: "plain" }, el("div", { class: "follow-bar" },
       ...[["followers", "Followers"], ["following", "Following"], ["contacts", "Contacts"]].map(([key, label]) =>
@@ -164,11 +164,13 @@ async function renderHub() {
   }).catch(() => {});
 }
 
-async function inviteFriends(username, button) {
+export async function inviteFriends(username, button) {
   const text = "Hello,\n\nI'd like to invite you to join Geerho, a new online marketplace built on trust. Every member verifies their identity, "
     + "so it's one person, one account, which helps keep scammers out.\n\nWhether you want to buy and sell, browse real estate, rent tools, "
     + "or find jobs, nearby or remote, you can do it with peace of mind. We'd love to have you in our verified community."
-    + (username ? `\n\nOnce you're in, follow me: @${username}` : "")
+    + (username ? `\n\nOnce you're in, follow me: @${username}`
+      + `\n\nWhen you join, go to Profile → Invite Friends and enter @${username} as who invited you. Once you verify your ID, `
+      + "we both get a sale with no Geerho commission." : "")
     + "\n\nTip: Geerho is in beta on Apple's TestFlight app. Open the link in Safari (not inside another app), install "
     + "TestFlight if asked, then tap Accept and Install. No code is needed."
     + "\n\nOn Android or a computer? Go to https://geerho.com/download.html"
@@ -180,7 +182,7 @@ async function inviteFriends(username, button) {
   await navigator.clipboard?.writeText(text).catch(() => {});
   const title = button.querySelector(".row-title");
   title.textContent = "Invitation copied. Paste it in a message.";
-  setTimeout(() => { title.textContent = "Invite to Geerho"; }, 3000);
+  setTimeout(() => { title.textContent = "Share My Invitation"; }, 3000);
 }
 
 // --- Edit Profile -------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 import { el, money, photoURL } from "./site.js";
 import { friendlyError, supabase } from "./auth.js";
 import { icon, rowIcon } from "./icons.js";
-import { avatar, screenHead } from "./profile.js";
+import { avatar, inviteFriends, screenHead } from "./profile.js";
 import { confirmDialog, reviewDialog, textDialog } from "./ui-dialog.js";
 
 const CARRIERS = { usps: "USPS", ups: "UPS", fedex: "FedEx", dhl: "DHL", lbc: "LBC", jnt: "J&T Express", ninjavan: "Ninja Van",
@@ -1011,12 +1011,42 @@ async function blocked(ctx) {
       () => supabase.from("blocks").delete().eq("blocker_id", ctx.me.id).eq("blocked_id", p.id)), "secondary")))))];
 }
 
+// --- Invite Friends (InviteFriendsView, M142) --------------------------------------------------------------------------
+
+async function invites(ctx) {
+  const { data: s, error } = await supabase.rpc("my_invites");
+  if (error) throw error;
+  const share = el("button", { type: "button", class: "row link-row" }, rowIcon("invite", "accent"), el("span", { class: "row-title" }, "Share My Invitation"));
+  share.addEventListener("click", () => inviteFriends(s.username, share));
+  const line = (label, value) => el("div", { class: "cell-pad" }, el("span", {}, label), el("strong", { style: "float:right" }, String(value)));
+  const out = [
+    group([el("div", { class: "cell-pad" }, el("p", {}, el("strong", {}, "Invite a friend, both sell for free")),
+      el("p", { class: "muted" }, "When a friend you invite joins and verifies their ID, you both get one sale with no Geerho commission. Card or bank processing still applies.")),
+      share, s.username ? line("Your invite code", `@${s.username}`) : null], null,
+      "Your friend enters your username under Profile → Invite Friends after joining. Geerho never messages anyone for you."),
+    group([line("Friends who joined", s.friends_joined), line("Friends who verified", s.friends_verified),
+      line("Free sales left", s.free_sales_left), s.free_sales_used ? line("Free sales used", s.free_sales_used) : null], "Your invitations"),
+  ];
+  if (s.invited_by) {
+    out.push(group([line("Invited by", `@${s.invited_by}`)], "Who invited you"));
+  } else if (s.can_claim) {
+    const field = el("input", { type: "text", placeholder: "Their username, like @maria_s", "aria-label": "Who invited you", autocapitalize: "none", spellcheck: "false" });
+    out.push(group([el("div", { class: "cell-pad form-grid" }, field, button("Save", async () => {
+      const { error: e } = await supabase.rpc("claim_invite", { username: field.value });
+      if (e) return ctx.fail(friendlyError(e));
+      ctx.reload();
+    }))], "Who invited you?",
+    `You can add this once, until ${new Date(s.claim_until).toLocaleDateString(undefined, { dateStyle: "medium" })}. You both get your free sale when you verify your ID.`));
+  }
+  return out.flat().filter(Boolean);
+}
+
 // --- Router ----------------------------------------------------------------------------------------------------------
 
 const SCREENS = {
   bids: ["My Bids", bids], purchases: ["Purchases", purchases], sales: ["Sales", sales], requests: ["Purchase Requests", requests],
   listings: ["My Listings", listings], watching: ["Watching", watching], favorites: ["Favorites", favorites], rentals: ["Rentals", rentals],
-  tours: ["Home Tours", tours], jobs: ["Jobs and Quotes", jobs], getpaid: ["Get Paid", getpaid], team: ["Team", team],
+  tours: ["Home Tours", tours], jobs: ["Jobs and Quotes", jobs], getpaid: ["Get Paid", getpaid], team: ["Team", team], invites: ["Invite Friends", invites],
   licenses: ["Professional Licenses", licenses], milestone: ["Milestone Level", milestone], address: ["Home Address", address],
   "follows-followers": ["Followers", (ctx) => follows(ctx, "followers")], "follows-following": ["Following", (ctx) => follows(ctx, "following")],
   "follows-contacts": ["Contacts", (ctx) => follows(ctx, "contacts")], blocked: ["Blocked Users", blocked],
