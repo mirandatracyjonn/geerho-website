@@ -1,5 +1,6 @@
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { el } from "./site.js";
+import { selection } from "./select-delete.js";
 
 // Your notifications (M51): automatic events, Geerho Support replies, team changes, followers, reviews, watch
 // alerts, and license decisions. Opening one marks it read; Mark All Read clears the rest.
@@ -7,6 +8,14 @@ import { el } from "./site.js";
 const status = document.getElementById("status");
 const list = document.getElementById("list");
 const markAll = document.getElementById("mark-all");
+// M149: swipe left (phones) deletes; long press or Select picks several; Delete all.
+const bar = el("div", { class: "select-bar" });
+list.before(bar);
+const picker = selection({ bar, what: "notifications", confirmText: "This can't be undone.", remove: async (ids) => {
+  const { error } = await supabase.rpc("delete_notifications", { ids });
+  if (error) { status.hidden = false; status.textContent = friendlyError(error); return; }
+  load();
+} });
 
 const ICONS = { support: "🛟", team: "👥", follow: "➕", review: "⭐", watch: "👁", license: "✅", outbid: "🔨", live: "🔴", moderator_handbook: "📘", invite: "🎁" };
 
@@ -86,7 +95,10 @@ async function load() {
     status.textContent = friendlyError(error);
     return;
   }
-  list.replaceChildren(...data.map(row));
+  picker.reset();
+  list.replaceChildren(...data.map((item) => picker.attach(row(item), item.id)));
+  for (const li of list.children) li.setAttribute("data-swipe", "");
+  picker.paint();
   list.hidden = data.length === 0;
   status.textContent = data.length === 0
     ? "No notifications yet. Updates about your purchases, sales, rentals, tours, jobs, team, followers, reviews, and watched items show up here."

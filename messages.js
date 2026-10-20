@@ -1,6 +1,7 @@
 // Messages page: your chats, messages, reactions, and reporting, refreshed every few seconds.
 import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { el, money, photoURL } from "./site.js";
+import { selection } from "./select-delete.js";
 import { confirmDialog } from "./ui-dialog.js";
 import { translateButton } from "./translate.js";
 
@@ -26,6 +27,17 @@ const status = document.getElementById("status");
 const inbox = document.getElementById("inbox");
 const list = document.getElementById("conversation-list");
 const thread = document.getElementById("thread");
+// M149: swipe left (phones) deletes; long press or Select picks several; Delete all (from your view only).
+const FOR_ME = "They're removed from your view only. The other person keeps theirs.";
+const listBar = el("div", { class: "select-bar" });
+list.before(listBar);
+const listPicker = selection({ bar: listBar, what: "chats", confirmText: FOR_ME, remove: async (ids) => {
+  const { error } = await supabase.rpc("delete_conversations_for_me", { ids: ids ?? conversations.map((c) => c.id) });
+  if (error) { alert(friendlyError(error)); return; }
+  if (ids === null || ids.includes(openId)) { openId = null; history.replaceState(null, "", "messages.html"); loadThread(true); }
+  loadConversations();
+} });
+let threadPicker = null;
 
 let me = null;
 let conversations = [];
@@ -41,7 +53,7 @@ async function loadConversations() {
   conversations = data ?? [];
   list.replaceChildren(...conversations.map((c) => {
     const unread = c.unread_count > 0;
-    return el("li", {},
+    return listPicker.attach(el("li", { "data-swipe": "" },
       el("a", { href: `?c=${c.id}`, class: unread ? "unread" : null, "aria-current": c.id === openId ? "true" : null, "data-id": c.id },
         c.listing_cover_path ? el("img", { src: photoURL(c.listing_cover_path), alt: "", loading: "lazy" }) : el("span", { class: "thumb-empty" }),
         el("span", { class: "conversation-text" },
@@ -50,8 +62,9 @@ async function loadConversations() {
           c.last_message_body && el("span", { class: "preview" }, `${unread ? `${c.unread_count} new · ` : ""}${c.last_message_body}`),
         ),
       ),
-    );
+    ), c.id);
   }));
+  listPicker.paint();
   // Geerho Support threads first, like the app's Inbox.
   const { data: tickets } = await supabase.rpc("support_tickets_list", { staff_view: false, only_status: null });
   const open = (tickets ?? []).filter((t) => !t.deleted_at);
@@ -217,14 +230,27 @@ async function loadThread(initial) {
       safetyMenu(conversation),
     );
     const messagesList = el("ol", { class: "bubbles", id: "bubbles" });
-    thread.replaceChildren(header, messagesList, composer());
+    const bar = el("div", { class: "select-bar" });
+    const conversationId = openId;
+    threadPicker = selection({ bar, what: "messages", confirmText: FOR_ME, remove: async (ids) => {
+      const { error } = await supabase.rpc("delete_messages_for_me", { conversation: conversationId, ids });
+      if (error) { alert(friendlyError(error)); return; }
+      for (const li of [...document.querySelectorAll("#bubbles > li[data-id]")]) {
+        if (ids === null || ids.includes(li.dataset.id)) { shownMessageIds.delete(li.dataset.id); li.remove(); }
+      }
+      threadPicker.paint();
+      loadConversations();
+    } });
+    thread.replaceChildren(header, bar, messagesList, composer());
   }
   if (initial) await loadReactions(); else loadReactions();
   const bubbles = document.getElementById("bubbles");
   const fresh = messages.filter((m) => !shownMessageIds.has(m.id));
   for (const message of fresh) {
     shownMessageIds.add(message.id);
-    bubbles.append(messageBubble(message));
+    const node = messageBubble(message);
+    if (!message.is_system) { node.setAttribute("data-swipe", ""); threadPicker?.attach(node, message.id); }
+    bubbles.append(node);
   }
   if (fresh.length) bubbles.scrollTop = bubbles.scrollHeight;
   if (!messages.length && initial) bubbles.append(el("li", { class: "status-line" }, "Say hello. Ask about the item, or arrange a time and a public place to meet."));

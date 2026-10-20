@@ -1153,3 +1153,12 @@ label.choice input { margin-top: 3px; }
 .waitlist-form .wl-consent input { margin-top: 3px; }
 .wl-trap { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; }
 .waitlist-band { margin-top: 48px; background: var(--surface); border-radius: 16px; padding: 8px 24px 24px; }
+
+/* M149: select and delete (notifications, chats, messages) */
+.select-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.select-bar:empty { display: none; }
+.danger-text { color: var(--bad); }
+.select-box { margin-right: 8px; width: 20px; height: 20px; flex: 0 0 auto; }
+.is-selecting { cursor: pointer; user-select: none; -webkit-user-select: none; }
+.is-selected { outline: 2px solid var(--accent, #4f63f6); outline-offset: 2px; border-radius: 12px; }
+[data-swipe] { transition: transform .15s ease; touch-action: pan-y; }
