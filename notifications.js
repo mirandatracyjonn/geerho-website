@@ -28,6 +28,7 @@ function linkFor(item) {
     // Same places as the app (NotificationsView): Profile → Team, Watching, Professional Licenses; Settings → Security; a member's profile.
     case "team": return "account.html#team";
     case "invites": return "account.html#invites";
+    case "calendar": return "admin.html#calendar";
     case "watching": return "account.html#watching";
     case "licenses": return "account.html#licenses";
     case "security": return "account.html#security";

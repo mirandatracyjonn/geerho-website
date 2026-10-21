@@ -218,6 +218,8 @@ async function overview() {
       stat("Fees waived", usd(o.fees_waived_cents), { detail: owner ? `At ${pct} of sales · change the rate` : `At ${pct} of sales`, iconName: "dollar", tint: "purple", href: owner ? `#commission/${o.commission_rate}` : null }),
       stat("Founding Members", `${o.founding_used} of ${o.founding_limit}`, { detail: `${Math.max(o.founding_limit - o.founding_used, 0)} free spots left (the Founder holds an extra #0)`, iconName: "star", tint: "orange", href: "#people/founding" }),
     ),
+    groupTitle("Calendar"),
+    group(stat("Business Calendar", "Deadlines", { detail: "Federal and California taxes, filings, renewals", iconName: "calendar", tint: "red", href: "#calendar" })),
     booksOwner ? groupTitle("Geerho Tech LLC") : null,
     booksOwner ? group(stat("Company Books", "Open", { detail: "Expenses, Stripe income, mileage, profit · Geerho, Xenpen, Klean", iconName: "dollar", tint: "green", href: "#books" })) : null,
     groupTitle("Team, categories, and settings"),
@@ -1564,6 +1566,62 @@ async function person(id) {
     el("div", { class: "actions wrap-actions" }, ...buttons), area);
 }
 
+// --- Business Calendar (M152): deadlines for Geerho Tech LLC; staff see it, Super Admins mark done -------------------
+const CAL_CATEGORIES = { tax_federal: ["Federal tax", "blue"], tax_state: ["California tax", "orange"], filing: ["Filing", "purple"], renewal: ["Renewal", "teal"], other: ["Other", "gray"] };
+let calShowDone = false;
+async function businessCalendar() {
+  show(back("Business Calendar"), loading());
+  const c = await rpc("business_calendar");
+  const err = el("p", { class: "status bad", role: "alert", hidden: true });
+  const run = async (fn) => { try { await fn(); businessCalendar(); } catch (e) { err.textContent = friendlyError(e); err.hidden = false; } };
+  const pretty = (d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const monthOf = (d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const row = (e) => {
+    const done = !!e.done_at;
+    const [catTitle] = CAL_CATEGORIES[e.category] ?? ["Other"];
+    const actions = [];
+    if (c.can_edit) {
+      const b = el("button", { type: "button", class: "link-button" }, done ? "Mark not done" : "Mark done");
+      b.addEventListener("click", () => run(() => rpc("business_event_done", { event: e.id, done: !done })));
+      actions.push(b);
+      if (!e.auto) {
+        const d = el("button", { type: "button", class: "link-button" }, "Delete");
+        d.addEventListener("click", () => run(() => rpc("delete_business_event", { event: e.id })));
+        actions.push(" ", d);
+      }
+    }
+    return el("li", { class: "kv" },
+      el("span", { class: "kv-label" }, el("strong", {}, `${done ? "✓ " : ""}${e.title}`), el("br"),
+        el("span", { class: !done && e.due_on < c.today ? "danger-text" : "hint" }, `${pretty(e.due_on)} · ${catTitle}`),
+        e.description ? el("br") : null, e.description ? el("span", { class: "hint" }, e.description) : null,
+        done && e.done_by ? el("span", { class: "hint" }, ` · Done by ${e.done_by}`) : null),
+      el("span", { class: "kv-value" }, ...actions));
+  };
+  const open = c.events.filter((e) => !e.done_at);
+  const overdue = open.filter((e) => e.due_on < c.today);
+  const upcoming = open.filter((e) => e.due_on >= c.today);
+  const months = [...new Set(upcoming.map((e) => monthOf(e.due_on)))];
+  const parts = [];
+  if (overdue.length) parts.push(groupTitle("Overdue"), group(...overdue.map(row)));
+  for (const m of months) parts.push(groupTitle(m), group(...upcoming.filter((e) => monthOf(e.due_on) === m).map(row)));
+  if (!open.length) parts.push(hint("Nothing coming up."));
+  let addForm = null;
+  if (c.can_edit) {
+    const title = el("input", { placeholder: "What, e.g. Renew geerho.com", maxlength: "160", "aria-label": "Event" });
+    const due = el("input", { type: "date", "aria-label": "Due" });
+    const cat = el("select", { "aria-label": "Kind" }, ...Object.entries(CAL_CATEGORIES).map(([k, [t]]) => el("option", { value: k }, t)));
+    const note = el("input", { placeholder: "Note (optional)", maxlength: "1000", "aria-label": "Note" });
+    const add = el("button", { type: "button", class: "button" }, "Add event");
+    add.addEventListener("click", () => run(() => rpc("add_business_event", { title: title.value.trim(), due_on: due.value, category: cat.value, description: note.value.trim() || null })));
+    addForm = [groupTitle("Add an event"), el("div", { class: "form-stack" }, title, due, cat, note, add)];
+  }
+  const toggle = el("button", { type: "button", class: "button secondary" }, calShowDone ? "Hide done" : "Show done");
+  toggle.addEventListener("click", () => { calShowDone = !calShowDone; businessCalendar(); });
+  show(back("Business Calendar"), err, ...parts, ...(addForm ?? []), el("div", { class: "btn-row" }, toggle),
+    calShowDone ? [groupTitle("Done"), group(...c.events.filter((e) => e.done_at).map(row))] : [],
+    hint(c.can_edit ? "Deadlines for Geerho Tech LLC are added automatically (federal and California taxes, filings, renewals). A reminder list, not tax advice: your CPA confirms which apply." : "Super Admins mark items done. Deadlines are added automatically."));
+}
+
 // --- Company Books (M151, Super Admin 1 only) ---------------------------------------------------------------------
 // Geerho Tech LLC's expenses and income for Geerho, Xenpen and Klean, like the apps' Company Books screen. Every
 // read and write goes through books_* functions that check Super Admin 1 on the server; receipts are in a private
@@ -1794,6 +1852,7 @@ async function route() {
       case "regions": return await featureRegions(arg || "property");
       case "categories": return await categoryRequests();
       case "books": return await books();
+      case "calendar": return await businessCalendar();
       case "propose": return proposeCategory();
       case "category": return await reviewCategory(arg);
       default: location.hash = "";
