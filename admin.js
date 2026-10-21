@@ -1405,36 +1405,78 @@ async function licenseRule(slug) {
     decisionArea(el("label", {}, "Country", country), state, el("label", {}, "License", required), note, error, el("div", { class: "actions" }, add)));
 }
 
-async function featureRegions(feature) {
+async function featureRegions(feature, country) {
   if (role !== "owner") { location.hash = ""; return; }
   show(back("Where It's Available"), loading());
   const { data, error: loadError } = await supabase.from("feature_regions").select("feature, country, subdivision");
   if (loadError) throw loadError;
   const regions = (data ?? []).filter((r) => r.feature === feature);
-  const has = (country, subdivision) => regions.some((r) => r.country === country && (r.subdivision ?? "") === subdivision);
+  const has = (c, subdivision) => regions.some((r) => r.country === c && (r.subdivision ?? "") === subdivision);
+  const statesOn = (c) => regions.filter((r) => r.country === c && r.subdivision).map((r) => r.subdivision);
+  const summary = (c) => has(c, "") ? "Whole country" : statesOn(c).length ? `${statesOn(c).length} on` : "Off";
+  const featureName = feature === "property" ? "real estate" : "freelance";
   const error = errorBox(""); error.hidden = true;
-  const setRegion = async (box, country, subdivision) => {
-    error.hidden = true; box.disabled = true;
-    try { await rpc("set_feature_region", { feature, country, subdivision, enabled: box.checked }); await featureRegions(feature); }
-    catch (e) { error.textContent = friendlyError(e); error.hidden = false; box.checked = !box.checked; box.disabled = false; }
+  // M153: one call replaces a country's rows. [] = off, [""] = whole country, else exactly those states.
+  const setCountry = async (c, subdivisions, box) => {
+    error.hidden = true; if (box) box.disabled = true;
+    try { await rpc("set_feature_country", { feature, country: c, subdivisions }); await featureRegions(feature, country); }
+    catch (e) { error.textContent = friendlyError(e); error.hidden = false; if (box) { box.checked = !box.checked; box.disabled = false; } }
   };
-  const toggle = (title, country, subdivision) => {
-    const box = el("input", { type: "checkbox", checked: has(country, subdivision) });
-    box.addEventListener("change", () => setRegion(box, country, subdivision));
+  const toggle = (title, onNow, change) => {
+    const box = el("input", { type: "checkbox", checked: onNow });
+    box.addEventListener("change", () => change(box));
     return el("li", { class: "cell-pad" }, el("label", { class: "check-row" }, box, ` ${title}`));
   };
+
+  if (country) {
+    // One country's states. With the whole country on, turning a state off keeps every other state on.
+    const all = US_STATES.map(([c]) => c);
+    const setState = (code, box) => {
+      const chosen = new Set(has(country, "") ? all : statesOn(country));
+      if (box.checked) chosen.add(code); else chosen.delete(code);
+      setCountry(country, chosen.size === all.length ? [""] : [...chosen], box);
+    };
+    const allButton = el("button", { type: "button", class: "link-button" }, "All");
+    allButton.addEventListener("click", () => setCountry(country, [""]));
+    const noneButton = el("button", { type: "button", class: "link-button" }, "None");
+    noneButton.addEventListener("click", () => setCountry(country, []));
+    show(back(countryName(country), `#regions/${feature}`), error,
+      group(toggle(`All of ${countryName(country)}`, has(country, ""), (box) => setCountry(country, box.checked ? [""] : [], box))),
+      hint("When this is on, every state is included. Turn a state off below to choose states one by one."),
+      groupTitle("States"), el("p", { class: "hint" }, allButton, " · ", noneButton),
+      group(...US_STATES.map(([c, n]) => toggle(n, has(country, "") || has(country, c), (box) => setState(c, box)))));
+    return;
+  }
+
   const switcher = el("div", { class: "segmented", role: "group", "aria-label": "Feature" },
     ...[["property", "Real estate"], ["freelance", "Freelance"]].map(([id, title]) => {
       const b = el("button", { type: "button", "aria-pressed": String(id === feature) }, title);
       b.addEventListener("click", () => { location.hash = `regions/${id}`; });
       return b;
     }));
-  const onNow = regions.map((r) => placeName(r.country, r.subdivision)).sort();
+  // On now: one row per country; uncheck to turn it off (asks first); the US opens its states.
+  const onNowRow = (c) => {
+    const li = el("li", { class: "cell-pad" });
+    const box = el("input", { type: "checkbox", checked: true, "aria-label": `Turn off ${countryName(c)}` });
+    const render = () => {
+      const states = c === "US" ? el("a", { href: `#regions/${feature}/${c}` }, `${summary(c)} ›`) : null;
+      li.replaceChildren(el("label", { class: "check-row" }, box, ` ${countryName(c)}`), states ? " · " : "", states ?? "");
+    };
+    box.addEventListener("change", () => {
+      const yes = el("button", { type: "button", class: "danger-button" }, "Turn Off");
+      const no = el("button", { type: "button", class: "secondary" }, "Cancel");
+      yes.addEventListener("click", () => setCountry(c, [], null));
+      no.addEventListener("click", () => { box.checked = true; render(); });
+      li.replaceChildren(`Turn off ${featureName} in ${countryName(c)}? New listings can't be posted there; listings already up stay up. `, yes, " ", no);
+    });
+    render();
+    return li;
+  };
+  const onNow = [...new Set(regions.map((r) => r.country))].sort((a, b) => countryName(a).localeCompare(countryName(b)));
   const search = el("input", { type: "search", placeholder: "Search countries", "aria-label": "Search countries" });
   const list = group(...COUNTRIES.map(([code, name]) => code === "US"
-    ? el("li", { "data-name": name.toLowerCase() }, el("details", {}, el("summary", {}, `${name} · ${has("US", "") ? "Whole country" : regions.filter((r) => r.country === "US").length ? `${regions.filter((r) => r.country === "US").length} on` : "Off"}`),
-        group(toggle(`All of ${name}`, "US", ""), ...US_STATES.map(([c, n]) => toggle(n, "US", c)))))
-    : toggle(name, code, "")));
+    ? el("li", { class: "cell-pad" }, el("a", { href: `#regions/${feature}/US` }, `${name} · ${summary("US")} ›`))
+    : toggle(name, has(code, ""), (box) => setCountry(code, box.checked ? [""] : [], box))));
   list.querySelectorAll(":scope > li").forEach((li, i) => { li.dataset.name = COUNTRIES[i][1].toLowerCase(); });
   search.addEventListener("input", () => {
     const q = search.value.trim().toLowerCase();
@@ -1444,7 +1486,8 @@ async function featureRegions(feature) {
     hint(feature === "property" ? "Where people may list homes for rent and for sale." : "Where people may offer services and post jobs."),
     error,
     groupTitle("On now"),
-    onNow.length ? group(...onNow.map((n) => el("li", { class: "cell-pad" }, `✓ ${n}`))) : group(el("li", { class: "cell-pad hint" }, "Nowhere yet")),
+    onNow.length ? group(...onNow.map(onNowRow)) : group(el("li", { class: "cell-pad hint" }, "Nowhere yet")),
+    hint("Uncheck a country to turn it off. Open United States to choose its states."),
     groupTitle("Countries"),
     decisionArea(search), list);
 }
@@ -1849,7 +1892,7 @@ async function route() {
       case "person": return await person(arg);
       case "license-rules": return await licenseRules();
       case "license-rule": return await licenseRule(decodeURIComponent(arg ?? ""));
-      case "regions": return await featureRegions(arg || "property");
+      case "regions": return await featureRegions(arg || "property", location.hash.split("/")[2]);
       case "categories": return await categoryRequests();
       case "books": return await books();
       case "calendar": return await businessCalendar();
