@@ -178,6 +178,7 @@ async function overview() {
     rpc("admin_overdue_rentals").catch(() => []),
     count("category_proposals_list", (p) => p.status === "pending"),
   ]);
+  const booksOwner = await rpc("books_is_owner").catch(() => false);   // M151: Super Admin 1 only
   if (o?.error) {
     tabPage("", empty("info", "Couldn't load the dashboard", friendlyError(o.error)));
     return;
@@ -217,6 +218,8 @@ async function overview() {
       stat("Fees waived", usd(o.fees_waived_cents), { detail: owner ? `At ${pct} of sales · change the rate` : `At ${pct} of sales`, iconName: "dollar", tint: "purple", href: owner ? `#commission/${o.commission_rate}` : null }),
       stat("Founding Members", `${o.founding_used} of ${o.founding_limit}`, { detail: `${Math.max(o.founding_limit - o.founding_used, 0)} free spots left (the Founder holds an extra #0)`, iconName: "star", tint: "orange", href: "#people/founding" }),
     ),
+    booksOwner ? groupTitle("Geerho Tech LLC") : null,
+    booksOwner ? group(stat("Company Books", "Open", { detail: "Expenses, Stripe income, mileage, profit · Geerho, Xenpen, Klean", iconName: "dollar", tint: "green", href: "#books" })) : null,
     groupTitle("Team, categories, and settings"),
     group(
       stat("Team and Super Admins", owner ? "Manage" : "View", { detail: owner ? "Add moderators, appoint Super Admins, succession" : "Super Admins, moderators, and elections", iconName: "team", tint: "indigo", href: "#team" }),
@@ -1561,6 +1564,202 @@ async function person(id) {
     el("div", { class: "actions wrap-actions" }, ...buttons), area);
 }
 
+// --- Company Books (M151, Super Admin 1 only) ---------------------------------------------------------------------
+// Geerho Tech LLC's expenses and income for Geerho, Xenpen and Klean, like the apps' Company Books screen. Every
+// read and write goes through books_* functions that check Super Admin 1 on the server; receipts are in a private
+// bucket only Super Admin 1 can read. Bookkeeping for the CPA, not a tax filing.
+
+const BOOKS_CATEGORIES = { advertising: "Advertising", car: "Car and truck", contract_labor: "Contract labor", insurance: "Insurance",
+  legal_professional: "Legal and professional", office: "Office expense", rent: "Rent or lease", repairs: "Repairs and maintenance",
+  supplies: "Supplies", taxes_licenses: "Taxes and licenses", travel: "Travel", meals: "Meals (50% deductible)", utilities: "Utilities",
+  software: "Software and subscriptions", phone_internet: "Phone and internet", bank_fees: "Bank fees", processing_fees: "Payment processing fees",
+  education: "Education and training", equipment: "Equipment", other: "Other" };
+const BOOKS_APPS = { company: "Geerho Tech LLC", geerho: "Geerho", xenpen: "Xenpen", klean: "Klean" };
+const BOOKS_KINDS = { sale: "Sale", commission: "Commission", subscription: "Subscription", fee: "Fee", refund: "Refund", dispute: "Dispute",
+  transfer: "Passed to seller", processing_fee: "Processing fee", payout: "Payout to bank", adjustment: "Adjustment", other: "Other" };
+const booksState = { period: "month", anchor: new Date(), tab: "expenses", note: null };
+const ymd = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const options = (map, selected) => Object.entries(map).map(([v, t]) => el("option", { value: v, ...(v === selected ? { selected: "" } : {}) }, t));
+
+async function books() {
+  show(back("Company Books"), loading());
+  if (!(await rpc("books_is_owner").catch(() => false))) { location.hash = ""; return; }
+  const st = booksState;
+  const r = await rpc("books_report", { period: st.period, anchor: ymd(st.anchor) });
+  const reload = () => books();
+  const err = el("p", { class: "status bad", role: "alert", hidden: true });
+  const fail = (e) => { err.textContent = friendlyError(e); err.hidden = false; };
+
+  const periodSel = el("select", { "aria-label": "Period" }, ...options({ month: "Month", quarter: "Quarter", year: "Year" }, st.period));
+  periodSel.addEventListener("change", () => { st.period = periodSel.value; reload(); });
+  const step = (dir) => {
+    const d = new Date(st.anchor);
+    if (st.period === "year") d.setFullYear(d.getFullYear() + dir); else d.setMonth(d.getMonth() + (st.period === "quarter" ? 3 : 1) * dir);
+    st.anchor = d; reload();
+  };
+  const prev = el("button", { type: "button", class: "button secondary" }, "‹ Previous");
+  const next = el("button", { type: "button", class: "button secondary" }, "Next ›");
+  prev.addEventListener("click", () => step(-1)); next.addEventListener("click", () => step(1));
+  const sync = el("button", { type: "button", class: "button" }, "Sync with Stripe");
+  sync.addEventListener("click", async () => {
+    sync.disabled = true; sync.textContent = "Syncing with Stripe…";
+    try {
+      const { data, error } = await supabase.functions.invoke("books", { body: { action: "sync", since: `${st.anchor.getFullYear()}-01-01` } });
+      if (error) throw error;
+      st.note = `Stripe: ${data.imported} new of ${data.checked} (${(data.accounts ?? []).join(", ")}).`;
+      reload();
+    } catch (e) { fail(e); sync.disabled = false; sync.textContent = "Sync with Stripe"; }
+  });
+
+  const summaries = (r.currencies ?? []).map((c) => {
+    const m = (v) => money(Number(v ?? 0), c.currency).replace(/^Free$/, money(0, c.currency));
+    const isUsd = c.currency === "USD";
+    const ded = isUsd ? Number(r.mileage.deduction_cents) + Number(r.home_office_cents) : 0;
+    const profit = Number(c.net_revenue_cents) - Number(c.expenses_cents) - ded;
+    return [groupTitle(c.currency), group(
+      kv("Money in", m(c.money_in_cents)), kv("Refunds and disputes", `−${m(c.refunds_cents)}`),
+      kv("Passed to sellers", `−${m(c.passed_to_sellers_cents)}`), kv("Payment processing fees", `−${m(c.processing_fees_cents)}`),
+      kv("Net revenue", m(c.net_revenue_cents)), kv("Expenses (business share)", `−${m(c.expenses_cents)}`),
+      isUsd && Number(r.mileage.deduction_cents) > 0 ? kv(`Mileage (${r.mileage.miles} mi)`, `−${m(r.mileage.deduction_cents)}`) : null,
+      isUsd && Number(r.home_office_cents) > 0 ? kv("Home office (simplified)", `−${m(r.home_office_cents)}`) : null,
+      kv("Profit", m(profit))),
+      Number(c.payouts_cents) ? hint(`Paid out to the bank: ${m(c.payouts_cents)}`) : null];
+  });
+
+  const tabBtns = el("div", { class: "segmented" }, ...[["expenses", "Expenses"], ["income", "Income"], ["mileage", "Mileage"], ["settings", "Settings"]].map(([v, t]) => {
+    const b = el("button", { type: "button", "aria-pressed": String(v === st.tab) }, t);
+    b.addEventListener("click", () => { st.tab = v; reload(); });
+    return b;
+  }));
+  const del = (fn, param, id, label = "Delete") => {
+    const b = el("button", { type: "button", class: "link-button" }, label);
+    b.addEventListener("click", async () => { try { await rpc(fn, { [param]: id }); reload(); } catch (e) { fail(e); } });
+    return b;
+  };
+  let body = [];
+  if (st.tab === "expenses") {
+    const date = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Date" });
+    const vendor = el("input", { placeholder: "Vendor, e.g. Apple, Supabase", maxlength: "120", "aria-label": "Vendor" });
+    const cat = el("select", { "aria-label": "Category" }, ...options(BOOKS_CATEGORIES, "software"));
+    const amount = el("input", { type: "number", step: "0.01", min: "0.01", placeholder: "Amount", "aria-label": "Amount" });
+    const cur = el("select", { "aria-label": "Currency" }, ...options({ USD: "USD", PHP: "PHP" }, "USD"));
+    const app = el("select", { "aria-label": "For" }, ...options(BOOKS_APPS, "company"));
+    const pct = el("input", { type: "number", min: "1", max: "100", value: "100", "aria-label": "Business use %" });
+    const note = el("input", { placeholder: "Note (optional)", maxlength: "500", "aria-label": "Note" });
+    const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/heic,application/pdf", "aria-label": "Receipt" });
+    const save = el("button", { type: "button", class: "button" }, "Add expense");
+    save.addEventListener("click", async () => {
+      const cents = Math.round(parseFloat(amount.value) * 100);
+      if (!(cents > 0) || !vendor.value.trim()) { fail(new Error("Enter the vendor and amount.")); return; }
+      save.disabled = true;
+      try {
+        let path = null;
+        const f = file.files?.[0];
+        if (f) {
+          if (f.size > 10 * 1024 * 1024) throw new Error("The receipt is over 10 MB.");
+          const ext = { "image/png": "png", "image/heic": "heic", "application/pdf": "pdf" }[f.type] ?? "jpg";
+          path = `${crypto.randomUUID()}.${ext}`;
+          const { error } = await supabase.storage.from("books-receipts").upload(path, f, { contentType: f.type || "image/jpeg" });
+          if (error) throw error;
+        }
+        await rpc("books_save_expense", { expense: null, spent_on: date.value, vendor: vendor.value.trim(), category: cat.value, amount_cents: cents,
+          currency: cur.value, app: app.value, business_pct: Number(pct.value) || 100, note: note.value.trim() || null, receipt_path: path });
+        reload();
+      } catch (e) { fail(e); save.disabled = false; }
+    });
+    body = [groupTitle("Add an expense"), el("div", { class: "form-stack" }, date, vendor, cat, amount, cur, app,
+      el("label", {}, "Business use %", pct), note, el("label", {}, "Receipt (photo or PDF, optional)", file), save),
+      groupTitle(`Expenses · ${r.label}`),
+      (r.expenses ?? []).length ? group(...r.expenses.map((e) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, `${e.vendor} · ${[e.spent_on, BOOKS_CATEGORIES[e.category], BOOKS_APPS[e.app], e.business_pct < 100 ? `${e.business_pct}% business` : null].filter(Boolean).join(" · ")}`),
+        el("span", { class: "kv-value" }, money(Number(e.amount_cents), e.currency), " ",
+          e.receipt_path ? (() => { const b = el("button", { type: "button", class: "link-button" }, "Receipt");
+            b.addEventListener("click", async () => { const { data } = await supabase.storage.from("books-receipts").createSignedUrl(e.receipt_path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener"); });
+            return b; })() : null, " ", del("books_delete_expense", "expense", e.id))))) : hint("No expenses in this period.")];
+  } else if (st.tab === "income") {
+    const date = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Date" });
+    const app = el("select", { "aria-label": "App" }, ...options(BOOKS_APPS, "geerho"));
+    const kind = el("select", { "aria-label": "Kind" }, ...options(BOOKS_KINDS, "sale"));
+    const source = el("select", { "aria-label": "Source" }, ...options({ manual: "By hand", paymongo: "PayMongo", apple: "App Store", google: "Google Play" }, "manual"));
+    const amount = el("input", { type: "number", step: "0.01", min: "0.01", placeholder: "Amount", "aria-label": "Amount" });
+    const cur = el("select", { "aria-label": "Currency" }, ...options({ USD: "USD", PHP: "PHP" }, "USD"));
+    const out = el("input", { type: "checkbox", "aria-label": "Money out" });
+    const fee = el("input", { type: "number", step: "0.01", min: "0", placeholder: "Processing fee (optional)", "aria-label": "Fee" });
+    const desc = el("input", { placeholder: "Description (optional)", maxlength: "300", "aria-label": "Description" });
+    const save = el("button", { type: "button", class: "button" }, "Add income");
+    save.addEventListener("click", async () => {
+      const cents = Math.round(parseFloat(amount.value) * 100);
+      if (!(cents > 0)) { fail(new Error("Enter an amount.")); return; }
+      try {
+        await rpc("books_add_income", { occurred_on: date.value, app: app.value, kind: kind.value, amount_cents: out.checked ? -cents : cents,
+          currency: cur.value, description: desc.value.trim() || null, source: source.value, fee_cents: Math.round((parseFloat(fee.value) || 0) * 100) });
+        reload();
+      } catch (e) { fail(e); }
+    });
+    body = [groupTitle("Add income by hand (PayMongo, App Store, …)"), el("div", { class: "form-stack" }, date, app, kind, source, amount, cur,
+      el("label", {}, out, " Money out (refund, fee, payout)"), fee, desc, save),
+      groupTitle(`Income · ${r.label}`),
+      (r.income ?? []).length ? group(...r.income.map((i) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, `${BOOKS_KINDS[i.kind] ?? i.kind}${i.is_test ? " (test)" : ""} · ${[i.occurred_at.slice(0, 10), BOOKS_APPS[i.app], i.source, Number(i.fee_cents) ? `fee ${money(Number(i.fee_cents), i.currency)}` : null, i.description].filter(Boolean).join(" · ")}`),
+        el("span", { class: "kv-value" }, money(Number(i.amount_cents), i.currency).replace(/^Free$/, "0"), " ", del("books_delete_income", "income", i.id, "Hide"))))) : hint("No income in this period. Use Sync with Stripe.")];
+  } else if (st.tab === "mileage") {
+    const date = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Date" });
+    const miles = el("input", { type: "number", step: "0.1", min: "0.1", placeholder: "Miles", "aria-label": "Miles" });
+    const purpose = el("input", { placeholder: "Purpose, e.g. Bank, laundromat supplies", maxlength: "200", "aria-label": "Purpose" });
+    const from = el("input", { placeholder: "From (optional)", maxlength: "120", "aria-label": "From" });
+    const to = el("input", { placeholder: "To (optional)", maxlength: "120", "aria-label": "To" });
+    const save = el("button", { type: "button", class: "button" }, "Add trip");
+    save.addEventListener("click", async () => {
+      try {
+        await rpc("books_save_trip", { trip: null, driven_on: date.value, miles: parseFloat(miles.value), purpose: purpose.value.trim(),
+          from_place: from.value.trim() || null, to_place: to.value.trim() || null });
+        reload();
+      } catch (e) { fail(e); }
+    });
+    body = [groupTitle("Add a business trip"), el("div", { class: "form-stack" }, date, miles, purpose, from, to, save),
+      groupTitle(`Mileage · ${r.label}`),
+      (r.trips ?? []).length ? group(...r.trips.map((t) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, `${t.purpose} · ${[t.driven_on, t.from_place, t.to_place].filter(Boolean).join(" · ")}`),
+        el("span", { class: "kv-value" }, `${t.miles} mi `, del("books_delete_trip", "trip", t.id))))) : hint("No trips in this period."),
+      hint("Log each business drive (the IRS asks for date, miles and purpose).")];
+  } else {
+    const s = r.settings;
+    const rate = el("input", { type: "number", min: "0", max: "500", value: s.mileage_rate_cents ?? 70, "aria-label": "Mileage rate (cents/mile)" });
+    const office = el("input", { type: "number", min: "0", value: s.office_sqft ?? "", placeholder: "e.g. 120", "aria-label": "Home office (sq ft)" });
+    const home = el("input", { type: "number", min: "0", value: s.home_sqft ?? "", placeholder: "e.g. 1500", "aria-label": "Whole home (sq ft)" });
+    const save = el("button", { type: "button", class: "button" }, "Save settings");
+    save.addEventListener("click", async () => {
+      try { await rpc("books_save_settings", { mileage_rate_cents: Number(rate.value) || 70, office_sqft: office.value ? Number(office.value) : null, home_sqft: home.value ? Number(home.value) : null }); st.note = "Settings saved."; reload(); }
+      catch (e) { fail(e); }
+    });
+    body = [groupTitle("Settings"), el("div", { class: "form-stack" }, el("label", {}, "Mileage rate (cents/mile)", rate),
+      el("label", {}, "Home office (sq ft)", office), el("label", {}, "Whole home (sq ft)", home), save),
+      hint("Home office uses the IRS simplified method ($5 per sq ft, up to 300 sq ft a year) and shows in the Year view. Use the IRS standard mileage rate; check with your CPA.")];
+  }
+
+  const csv = el("button", { type: "button", class: "button secondary" }, "Export for your CPA (CSV)");
+  csv.addEventListener("click", () => {
+    const q = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+    const a = (c) => (Number(c) / 100).toFixed(2);
+    const lines = ["type,date,app,category_or_kind,description,amount,fee,currency,business_pct,source"];
+    for (const e of r.expenses ?? []) lines.push(["expense", e.spent_on, e.app, e.category, q(`${e.vendor}${e.note ? ` — ${e.note}` : ""}`), a(e.amount_cents), "0", e.currency, e.business_pct, "manual"].join(","));
+    for (const i of (r.income ?? []).filter((x) => !x.is_test)) lines.push(["income", i.occurred_at.slice(0, 10), i.app, i.kind, q(i.description), a(i.amount_cents), a(i.fee_cents), i.currency, "", i.source].join(","));
+    for (const t of r.trips ?? []) lines.push(["mileage", t.driven_on, "company", "car", q(t.purpose), t.miles, "0", "MI", "100", "manual"].join(","));
+    const link = el("a", { href: URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" })), download: `geerho-tech-llc-books-${r.label.replaceAll(" ", "-")}.csv` });
+    document.body.append(link); link.click(); link.remove();
+  });
+
+  show(back("Company Books"),
+    el("div", { class: "form-stack" }, periodSel, el("div", { class: "btn-row" }, prev, el("strong", {}, r.label), next), sync,
+      r.stripe_synced_at ? hint(`Last synced ${dateTime(r.stripe_synced_at)}`) : null,
+      st.note ? el("p", { class: "status good" }, st.note) : null, err),
+    ...summaries.flat(),
+    Number(r.test_rows) ? hint(`${r.test_rows} Stripe test-mode transactions aren't counted.`) : null,
+    tabBtns, ...body, el("div", { class: "btn-row" }, csv),
+    hint("Bookkeeping to share with your CPA, not a tax filing. Payouts move money to the bank; they aren't income."));
+  st.note = null;
+}
+
 async function route() {
   const [name, arg] = location.hash.replace(/^#/, "").split("/");
   try {
@@ -1594,6 +1793,7 @@ async function route() {
       case "license-rule": return await licenseRule(decodeURIComponent(arg ?? ""));
       case "regions": return await featureRegions(arg || "property");
       case "categories": return await categoryRequests();
+      case "books": return await books();
       case "propose": return proposeCategory();
       case "category": return await reviewCategory(arg);
       default: location.hash = "";

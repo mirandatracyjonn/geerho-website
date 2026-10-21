@@ -1162,3 +1162,8 @@ label.choice input { margin-top: 3px; }
 .is-selecting { cursor: pointer; user-select: none; -webkit-user-select: none; }
 .is-selected { outline: 2px solid var(--accent, #4f63f6); outline-offset: 2px; border-radius: 12px; }
 [data-swipe] { transition: transform .15s ease; touch-action: pan-y; }
+
+/* M151 Company Books (admin) */
+.form-stack { display: grid; gap: 8px; margin: 0 0 12px; }
+.form-stack label { display: grid; gap: 4px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
