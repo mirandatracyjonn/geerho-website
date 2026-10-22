@@ -12,6 +12,7 @@ import { currentUser, friendlyError, signInURL, supabase } from "./auth.js";
 import { icon, rowIcon, verifiedBadge } from "./icons.js";
 import { screenHead } from "./profile.js";
 import { confirmDialog } from "./ui-dialog.js";
+import { renderMarkdown } from "./page-md.js";
 
 const TIKTOK_HANDLE = "aceallen82";
 const MAX_LEVEL = 50;
@@ -219,7 +220,8 @@ async function overview() {
       stat("Founding Members", `${o.founding_used} of ${o.founding_limit}`, { detail: `${Math.max(o.founding_limit - o.founding_used, 0)} free spots left (the Founder holds an extra #0)`, iconName: "star", tint: "orange", href: "#people/founding" }),
     ),
     groupTitle("Calendar"),
-    group(stat("Business Calendar", "Deadlines", { detail: "Federal and California taxes, filings, renewals", iconName: "calendar", tint: "red", href: "#calendar" })),
+    group(stat("Business Calendar", "Deadlines", { detail: "Federal and California taxes, filings, renewals", iconName: "calendar", tint: "red", href: "#calendar" }),
+      owner ? stat("Shared Pages", "Write", { detail: "Pages anyone with the link can read, or private", iconName: "doc", tint: "blue", href: "#pages" }) : null),
     booksOwner ? groupTitle("Geerho Tech LLC") : null,
     booksOwner ? group(stat("Company Books", "Open", { detail: "Expenses, Stripe income, mileage, profit · Geerho, Xenpen, Klean", iconName: "dollar", tint: "green", href: "#books" })) : null,
     groupTitle("Team, categories, and settings"),
@@ -1612,6 +1614,66 @@ async function person(id) {
 // --- Business Calendar (M152): deadlines for Geerho Tech LLC; staff see it, Super Admins mark done -------------------
 const CAL_CATEGORIES = { tax_federal: ["Federal tax", "blue"], tax_state: ["California tax", "orange"], filing: ["Filing", "purple"], renewal: ["Renewal", "teal"], other: ["Other", "gray"] };
 let calShowDone = false;
+// --- Shared Pages (M157): Super Admins write; anyone with the link reads unless private ----------------------------
+
+const pageURL = (token) => `${location.origin}/page.html?p=${token}`;
+
+async function sharedPages(id) {
+  if (role !== "owner") { location.hash = ""; return; }
+  show(back("Shared Pages"), loading());
+  const pages = await rpc("shared_pages_list");
+  if (id) return pageEditor(id === "new" ? null : pages.find((p) => p.id === id));
+  const add = el("button", { type: "button", class: "button" }, "New Page");
+  add.addEventListener("click", () => { location.hash = "pages/new"; });
+  show(back("Shared Pages"),
+    hint("Write a page and share its link. Anyone with the link can read it, signed in or not, unless you tick Private; then only Super Admins can open it. Pages aren't listed or searchable anywhere."),
+    el("div", { class: "btn-row" }, add),
+    pages.length ? group(...pages.map((p) => el("li", {}, el("a", { class: "item-row", href: `#pages/${p.id}` },
+      el("span", { class: "row-title" }, el("strong", {}, p.title),
+        el("small", {}, `${p.is_private ? "Private" : "Anyone with the link"} · updated ${dateOnly(p.updated_at)}`)))))) : hint("No pages yet."));
+}
+
+function pageEditor(page) {
+  const title = el("input", { id: "page-title", maxlength: "160", placeholder: "Title", value: page?.title ?? "", "aria-label": "Title" });
+  const body = el("textarea", { id: "page-body", placeholder: "# Heading\nText…\n- [ ] A checklist item\n  A note under it", "aria-label": "Page text (Markdown)" });
+  body.value = page?.body ?? "";
+  const priv = el("input", { type: "checkbox", id: "page-private", checked: Boolean(page?.is_private) });
+  const preview = el("div", { class: "shared-page" });
+  const refresh = () => preview.replaceChildren(el("h1", {}, title.value || "Untitled"), renderMarkdown(body.value));
+  title.addEventListener("input", refresh); body.addEventListener("input", refresh); refresh();
+  const err = el("p", { class: "status bad", role: "alert", hidden: true });
+  const linkLine = el("p", { class: "hint" });
+  const showLink = (token) => {
+    if (!token) return linkLine.replaceChildren("Save to get the link.");
+    const url = pageURL(token);
+    const copy = el("button", { type: "button", class: "link-button" }, "Copy link");
+    copy.addEventListener("click", async () => { try { await navigator.clipboard.writeText(url); copy.textContent = "Copied"; } catch { copy.textContent = "Select the link to copy it"; } });
+    linkLine.replaceChildren(el("a", { href: url, target: "_blank", rel: "noopener" }, url), " ", copy);
+  };
+  showLink(page?.token);
+  const save = el("button", { type: "button", class: "button" }, "Save");
+  save.addEventListener("click", async () => {
+    err.hidden = true; save.disabled = true;
+    try {
+      const token = await rpc("save_shared_page", { page: page?.id ?? null, title: title.value.trim(), body: body.value, is_private: priv.checked });
+      if (!page) { const list = await rpc("shared_pages_list"); location.hash = `pages/${list.find((p) => p.token === token)?.id ?? ""}`; return; }
+      page = { ...page, token }; showLink(token); save.textContent = "Saved"; setTimeout(() => { save.textContent = "Save"; }, 1500);
+    } catch (e) { err.textContent = friendlyError(e); err.hidden = false; }
+    save.disabled = false;
+  });
+  const remove = page ? el("button", { type: "button", class: "danger-button" }, "Delete Page") : null;
+  remove?.addEventListener("click", async () => {
+    if (!(await confirmDialog("Delete this page?", "The link stops working for everyone.", "Delete", { danger: true }))) return;
+    try { await rpc("delete_shared_page", { page: page.id }); location.hash = "pages"; } catch (e) { err.textContent = friendlyError(e); err.hidden = false; }
+  });
+  show(back(page ? "Edit Page" : "New Page", "#pages"),
+    el("div", { class: "form-stack page-editor" }, title, body,
+      el("label", { class: "check-row", for: "page-private" }, priv, " Private (only Super Admins can open the link)"),
+      el("div", { class: "btn-row" }, save, remove), err, linkLine),
+    hint("Markdown: # heading, **bold**, *italic*, [text](https://…), - list, 1. list, - [ ] checklist (an indented line under an item adds a note), > quote, --- line."),
+    groupTitle("Preview"), preview);
+}
+
 async function businessCalendar() {
   show(back("Business Calendar"), loading());
   const c = await rpc("business_calendar");
@@ -1925,6 +1987,7 @@ async function route() {
       case "categories": return await categoryRequests();
       case "books": return await books();
       case "calendar": return await businessCalendar();
+      case "pages": return await sharedPages(arg);
       case "propose": return proposeCategory();
       case "category": return await reviewCategory(arg);
       default: location.hash = "";
