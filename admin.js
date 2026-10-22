@@ -1727,7 +1727,7 @@ async function books() {
       Number(c.payouts_cents) ? hint(`Paid out to the bank: ${m(c.payouts_cents)}`) : null];
   });
 
-  const tabBtns = el("div", { class: "segmented" }, ...[["expenses", "Expenses"], ["income", "Income"], ["mileage", "Mileage"], ["settings", "Settings"]].map(([v, t]) => {
+  const tabBtns = el("div", { class: "segmented" }, ...[["expenses", "Expenses"], ["income", "Income"], ["mileage", "Mileage"], ["owner", "Owner"], ["settings", "Settings"]].map(([v, t]) => {
     const b = el("button", { type: "button", "aria-pressed": String(v === st.tab) }, t);
     b.addEventListener("click", () => { st.tab = v; reload(); });
     return b;
@@ -1823,6 +1823,34 @@ async function books() {
         el("span", { class: "kv-label" }, `${t.purpose} · ${[t.driven_on, t.from_place, t.to_place].filter(Boolean).join(" · ")}`),
         el("span", { class: "kv-value" }, `${t.miles} mi `, del("books_delete_trip", "trip", t.id))))) : hint("No trips in this period."),
       hint("Log each business drive (the IRS asks for date, miles and purpose).")];
+  } else if (st.tab === "owner") {
+    // M156: owner contributions and draws: the owner's own money moving, not income or expenses.
+    const kind = el("select", { "aria-label": "Type" }, ...options({ contribution: "Put money in (contribution)", draw: "Take money out (draw)" }, "contribution"));
+    const date = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Date" });
+    const amount = el("input", { type: "number", step: "0.01", min: "0.01", placeholder: "Amount", "aria-label": "Amount" });
+    const currency = el("select", { "aria-label": "Currency" }, ...options({ USD: "USD", PHP: "PHP" }, "USD"));
+    const method = el("select", { "aria-label": "How" }, ...options({ bank: "Bank transfer", cash: "Cash", property: "Property (e.g. apps, equipment)", other: "Other" }, "bank"));
+    const note = el("input", { placeholder: "Note, e.g. Opening deposit, Wells Fargo", maxlength: "500", "aria-label": "Note" });
+    const save = el("button", { type: "button", class: "button" }, "Add");
+    save.addEventListener("click", async () => {
+      try {
+        await rpc("books_save_owner_move", { move: null, moved_on: date.value, kind: kind.value, amount_cents: Math.round(parseFloat(amount.value) * 100),
+          currency: currency.value, method: method.value, note: note.value.trim() || null });
+        reload();
+      } catch (e) { fail(e); }
+    });
+    const om = (v, c) => Number(v) ? money(Number(v), c) : (c === "PHP" ? "₱0.00" : "$0.00");
+    const methodName = { bank: "Bank transfer", cash: "Cash", property: "Property", other: "Other" };
+    body = [groupTitle("Owner money"),
+      ...(r.owner ?? []).map((o) => group(kv(`Put in (${r.label})`, om(o.contributions_cents, o.currency)),
+        kv(`Taken out (${r.label})`, om(o.draws_cents, o.currency)), kv("Owner's capital to date", om(o.balance_cents, o.currency)))),
+      (r.owner ?? []).length ? null : hint("Nothing recorded yet."),
+      hint("Money or property you put into Geerho Tech LLC (contributions) or take out for yourself (draws). It's your own money moving, so it isn't income or an expense and doesn't change profit."),
+      groupTitle("Add money in or out"), el("div", { class: "form-stack" }, kind, date, amount, currency, method, note, save),
+      groupTitle(r.label),
+      (r.owner_moves ?? []).length ? group(...r.owner_moves.map((m) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, `${m.kind === "draw" ? "Draw" : "Contribution"} · ${[m.moved_on, methodName[m.method], m.note].filter(Boolean).join(" · ")}`),
+        el("span", { class: "kv-value" }, `${m.kind === "draw" ? "−" : "+"}${money(Number(m.amount_cents), m.currency)} `, del("books_delete_owner_move", "move", m.id))))) : hint("Nothing in this period.")];
   } else {
     const s = r.settings;
     const rate = el("input", { type: "number", min: "0", max: "500", value: s.mileage_rate_cents ?? 70, "aria-label": "Mileage rate (cents/mile)" });
@@ -1846,6 +1874,7 @@ async function books() {
     for (const e of r.expenses ?? []) lines.push(["expense", e.spent_on, e.app, e.category, q(`${e.vendor}${e.note ? ` — ${e.note}` : ""}`), a(e.amount_cents), "0", e.currency, e.business_pct, "manual"].join(","));
     for (const i of (r.income ?? []).filter((x) => !x.is_test)) lines.push(["income", i.occurred_at.slice(0, 10), i.app, i.kind, q(i.description), a(i.amount_cents), a(i.fee_cents), i.currency, "", i.source].join(","));
     for (const t of r.trips ?? []) lines.push(["mileage", t.driven_on, "company", "car", q(t.purpose), t.miles, "0", "MI", "100", "manual"].join(","));
+    for (const m of r.owner_moves ?? []) lines.push([`owner_${m.kind}`, m.moved_on, "company", m.method, q(m.note), a(m.amount_cents), "0", m.currency, "", "manual"].join(","));
     const link = el("a", { href: URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" })), download: `geerho-tech-llc-books-${r.label.replaceAll(" ", "-")}.csv` });
     document.body.append(link); link.click(); link.remove();
   });
