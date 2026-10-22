@@ -699,21 +699,44 @@ async function getpaid(ctx) {
         ctx.reload();
       }))], "Bank or e-wallet", "Buyers in the Philippines pay with cards, GCash, Maya, and more; Geerho pays you in pesos.")];
   }
-  const { data: p } = await supabase.rpc("my_payouts");
+  let { data: p } = await supabase.rpc("my_payouts");
+  // Ask Stripe for the latest status while setup or tax information isn't finished (M154).
+  if (p?.connected && (!p.payouts_ready || p.tax_status !== "complete")) {
+    await supabase.functions.invoke("payments", { body: { action: "payout_status" } }).catch(() => {});
+    ({ data: p } = await supabase.rpc("my_payouts"));
+  }
+  // M154: Personal seller (SSN) or Business (EIN), chosen before the Stripe account is made.
+  const sellerType = el("select", { "aria-label": "You're selling as" },
+    el("option", { value: "individual" }, "Personal: yourself or a sole proprietor (SSN)"),
+    el("option", { value: "company" }, "Business: an LLC or corporation (EIN)"));
   const open = (action) => async () => {
-    const { data, error } = await supabase.functions.invoke("payments", { body: { action, from: "web" } });
+    const body = { action, from: "web" };
+    if (action === "connect" && !p?.connected) body.seller_type = sellerType.value;
+    const { data, error } = await supabase.functions.invoke("payments", { body });
     if (data?.url) location.href = data.url; else ctx.fail(error ? "We couldn't open Stripe. Please try again." : "");
   };
+  const taxDone = p?.tax_status === "complete";
   const status = !p?.connected ? ["Not set up yet. Set up payouts to take card payments.", "warn"]
-    : p.payouts_ready ? ["Ready · buyers can pay you by card", "good"] : ["Almost there · finish your Stripe setup", "warn"];
+    : p.payouts_ready ? ["Ready · buyers can pay you by card", "good"]
+    : !taxDone && p.details_submitted ? ["Payouts paused · add your tax information", "warn"]
+    : ["Almost there · finish your Stripe setup", "warn"];
+  const taxLabel = { complete: ["On file", "good"], pending: ["Being checked", "warn"] }[p?.tax_status] ?? ["Needed", "warn"];
+  const taxNote = (taxDone ? "" : "Payouts are paused until your tax information is on file. ")
+    + "Stripe keeps your SSN or EIN; Geerho never sees it. Geerho reports your sales to the IRS on Form 1099-K when they reach the federal threshold ($20,000 and 200 sales in a year; some states lower), and you report your own income.";
   return [intro, picker,
+    p?.connected ? null : group([el("div", { class: "cell-pad form-grid" }, el("label", {}, "You're selling as", sellerType))], "Seller type",
+      "Stripe asks for your Social Security number (Personal) or your company's EIN (Business)."),
     group([el("div", { class: "cell-pad" }, el("span", { class: `state ${status[1]}` }, status[0]),
       el("p", { class: "hint" }, `Paid to you: ${money(p?.paid_cents ?? 0, "USD")} · Held until delivery: ${money(p?.held_cents ?? 0, "USD")}`
         + (p?.commission_rate != null ? ` · Commission: ${Math.round(p.commission_rate * 1000) / 10}%` : "")))], "Your money"),
+    p?.connected ? group([el("div", { class: "cell-pad" },
+      el("p", {}, `Selling as: ${p.seller_type === "company" ? "Business" : p.seller_type === "individual" ? "Personal" : "—"}`),
+      el("p", {}, `${p.seller_type === "company" ? "EIN" : "SSN or EIN"}: `, el("span", { class: `state ${taxLabel[1]}` }, taxLabel[0])))], "Taxes", taxNote) : null,
     el("div", { class: "stack-actions" },
-      button(!p?.connected ? "Set Up Payouts" : p.payouts_ready ? "Update Payout Details" : "Continue Setup", open("connect")),
+      button(!p?.connected ? "Set Up Payouts" : !taxDone && p.tax_status !== "pending" && p.details_submitted ? "Add Tax Information"
+        : p.payouts_ready ? "Update Payout Details" : "Continue Setup", open("connect")),
       p?.connected ? button("Open Stripe Dashboard", open("dashboard"), "secondary") : null),
-    el("p", { class: "group-footer" }, "Stripe handles payouts and verifies sellers. Geerho never sees your bank details.")];
+    el("p", { class: "group-footer" }, "Stripe handles payouts and verifies sellers. Geerho never sees your bank details or tax number.")];
 }
 
 function wireRemovePH(ctx) {
