@@ -23,6 +23,7 @@ MORE = [
 FOOTER = [
     ("terms.html", "Terms"),
     ("privacy.html", "Privacy"),
+    ("refund-policy.html", "Refunds"),
     ("help.html", "User Handbook"),
     ("faq.html", "FAQs"),
     ("community-guidelines.html", "Community Guidelines"),
