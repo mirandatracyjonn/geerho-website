@@ -223,7 +223,8 @@ async function overview() {
     group(stat("Business Calendar", "Deadlines", { detail: "Federal and California taxes, filings, renewals", iconName: "calendar", tint: "red", href: "#calendar" }),
       owner ? stat("Shared Pages", "Write", { detail: "Pages anyone with the link can read, or private", iconName: "doc", tint: "blue", href: "#pages" }) : null),
     booksOwner ? groupTitle("Geerho Tech LLC") : null,
-    booksOwner ? group(stat("Company Books", "Open", { detail: "Expenses, Stripe income, mileage, profit · Geerho, Xenpen, Klean", iconName: "dollar", tint: "green", href: "#books" })) : null,
+    booksOwner ? group(stat("Company Books", "Open", { detail: "Expenses, Stripe income, mileage, profit · Geerho, Xenpen, Klean", iconName: "dollar", tint: "green", href: "#books" }),
+                       stat("AI Office", "Open", { detail: "Weekly community report · marketing drafts", iconName: "star", tint: "purple", href: "#ai-office" })) : null,
     groupTitle("Team, categories, and settings"),
     group(
       stat("Team and Super Admins", owner ? "Manage" : "View", { detail: owner ? "Add moderators, appoint Super Admins, succession" : "Super Admins, moderators, and elections", iconName: "team", tint: "indigo", href: "#team" }),
@@ -1729,6 +1730,82 @@ async function businessCalendar() {
     hint(c.can_edit ? "Deadlines for Geerho Tech LLC are added automatically (federal and California taxes, filings, renewals). A reminder list, not tax advice: your CPA confirms which apply." : "Super Admins mark items done. Deadlines are added automatically."));
 }
 
+// --- AI Office (M171, Super Admin 1 only) -----------------------------------------------------------------------------
+// #5 the weekly community report (every Monday, from totals only) and #6 the marketing manager: drafts TJ copies,
+// approves or discards; Geerho never posts or sends them. Like the apps' AI Office screen.
+
+const AI_KINDS = { social: "Social post", app_store: "App Store / Google Play text", announcement: "Announcement / News", email: "Email", other: "Other" };
+const aiWeek = (d) => "Week of " + new Date(`${d}T12:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const aiOfficeState = { tab: "report" };
+
+async function aiOffice(arg) {
+  show(back("AI Office"), loading());
+  if (!(await rpc("books_is_owner").catch(() => false))) { location.hash = ""; return; }
+  const office = await rpc("ai_office");
+  const [kind, id] = (arg ?? "").split(":");
+  if (kind === "report") {
+    const r = office.reports.find((x) => x.id === id);
+    if (r) return show(back(aiWeek(r.week_start), "#ai-office"), el("div", { class: "decision" }, el("p", { style: "white-space: pre-wrap" }, r.body)));
+  }
+  if (kind === "draft") {
+    const d = office.drafts.find((x) => x.id === id);
+    if (d) return aiDraft(d);
+  }
+  const err = el("p", { class: "status bad", role: "alert", hidden: true });
+  const call = async (button, body, label) => {
+    err.hidden = true; button.disabled = true; button.textContent = "Writing…";
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-office", { body });
+      if (error || data?.error) throw new Error(data?.error ?? (await error.context?.json?.().catch(() => null))?.error ?? error.message);
+      aiOffice();
+    } catch (e) { err.textContent = friendlyError(e); err.hidden = false; button.disabled = false; button.textContent = label; }
+  };
+  const tabs = el("div", { class: "segmented", role: "group", "aria-label": "Section" }, ...[["report", "Weekly report"], ["marketing", "Marketing"]].map(([k, t]) => {
+    const b = el("button", { type: "button", "aria-pressed": String(aiOfficeState.tab === k) }, t);
+    b.addEventListener("click", () => { aiOfficeState.tab = k; aiOffice(); });
+    return b;
+  }));
+  if (aiOfficeState.tab === "report") {
+    const write = el("button", { type: "button", class: "button" }, "Write Last Week's Report Now");
+    write.addEventListener("click", () => call(write, { action: "weekly" }, "Write Last Week's Report Now"));
+    return show(back("AI Office"), tabs, el("div", { class: "btn-row" }, write), err,
+      hint("A new report arrives every Monday morning, with a notification. Claude reads only totals (members, listings, sales, reports, Support), never names, messages or listings."),
+      office.reports.length ? group(...office.reports.map((r) => el("li", {}, el("a", { class: "item-row", href: `#ai-office/report:${r.id}` },
+        el("span", { class: "row-title" }, el("strong", {}, aiWeek(r.week_start)), el("small", {}, r.body.slice(0, 140))))))) : hint("No reports yet."));
+  }
+  const kindSel = el("select", { "aria-label": "Kind" }, ...options(AI_KINDS, "social"));
+  const ask = el("textarea", { placeholder: "What do you need? e.g. A Facebook post about Unlimited Fridays", "aria-label": "What do you need?", maxlength: "2000" });
+  const go = el("button", { type: "button", class: "button" }, "Write Drafts");
+  go.addEventListener("click", () => { if (ask.value.trim().length >= 3) call(go, { action: "draft", kind: kindSel.value, request: ask.value.trim() }, "Write Drafts"); });
+  show(back("AI Office"), tabs,
+    el("div", { class: "decision" }, kindSel, ask, el("div", { class: "actions" }, go), err),
+    hint("Claude writes up to three versions from the User Handbook and FAQ. They're drafts only: Geerho never posts or sends them. Check every fact before you use one."),
+    groupTitle("Drafts"),
+    office.drafts.length ? group(...office.drafts.map((d) => el("li", {}, el("a", { class: "item-row", href: `#ai-office/draft:${d.id}` },
+      el("span", { class: "row-title" }, el("strong", {}, d.request.slice(0, 120)),
+        el("small", {}, `${AI_KINDS[d.kind] ?? d.kind}${d.status === "approved" ? " · Approved" : ""} · ${dateOnly(d.created_at)}`)))))) : hint("No drafts yet."));
+}
+
+function aiDraft(d) {
+  const err = el("p", { class: "status bad", role: "alert", hidden: true });
+  const decide = (label, status, cls = "secondary") => {
+    const b = el("button", { type: "button", class: cls }, label);
+    act(b, err, "ai-office", () => rpc("ai_marketing_decide", { draft: d.id, new_status: status }));
+    return b;
+  };
+  show(back(AI_KINDS[d.kind] ?? "Draft", "#ai-office"),
+    groupTitle("Request"), el("p", {}, d.request),
+    ...d.drafts.flatMap((v) => {
+      const copy = el("button", { type: "button", class: "link-button" }, "Copy");
+      copy.addEventListener("click", async () => { try { await navigator.clipboard.writeText(v.text); copy.textContent = "Copied"; } catch { copy.textContent = "Select the text to copy it"; } });
+      return [groupTitle(v.title), el("div", { class: "decision" }, el("p", { style: "white-space: pre-wrap" }, v.text), copy)];
+    }),
+    d.notes ? groupTitle("Check before using") : null, d.notes ? el("p", {}, d.notes) : null,
+    el("div", { class: "actions" }, d.status === "approved" ? decide("Mark Not Approved", "new") : decide("Approve", "approved", "button"),
+      decide("Discard", "discarded", "secondary danger")), err,
+    hint("Approving only marks it for you; nothing is posted."));
+}
+
 // --- Company Books (M151, Super Admin 1 only) ---------------------------------------------------------------------
 // Geerho Tech LLC's expenses and income for Geerho, Xenpen and Klean, like the apps' Company Books screen. Every
 // read and write goes through books_* functions that check Super Admin 1 on the server; receipts are in a private
@@ -2001,6 +2078,7 @@ async function route() {
       case "regions": return await featureRegions(arg || "property", location.hash.split("/")[2]);
       case "categories": return await categoryRequests();
       case "books": return await books();
+      case "ai-office": return await aiOffice(arg);
       case "calendar": return await businessCalendar();
       case "pages": return await sharedPages(arg);
       case "propose": return proposeCategory();
