@@ -1763,15 +1763,16 @@ async function books() {
   const prev = el("button", { type: "button", class: "button secondary" }, "‹ Previous");
   const next = el("button", { type: "button", class: "button secondary" }, "Next ›");
   prev.addEventListener("click", () => step(-1)); next.addEventListener("click", () => step(1));
-  const sync = el("button", { type: "button", class: "button" }, "Sync with Stripe");
+  const sync = el("button", { type: "button", class: "button" }, "Sync with Stripe and Mercury");
   sync.addEventListener("click", async () => {
-    sync.disabled = true; sync.textContent = "Syncing with Stripe…";
+    sync.disabled = true; sync.textContent = "Syncing…";
     try {
       const { data, error } = await supabase.functions.invoke("books", { body: { action: "sync", since: `${st.anchor.getFullYear()}-01-01` } });
       if (error) throw error;
-      st.note = `Stripe: ${data.imported} new of ${data.checked} (${(data.accounts ?? []).join(", ")}).`;
+      st.note = `Stripe: ${data.imported} new of ${data.checked} (${(data.accounts ?? []).join(", ")}).` +
+        (data.mercury ? ` Mercury: ${data.mercury.expenses} expenses, ${data.mercury.owner_moves} owner entries (${data.mercury.checked} checked).` : "");
       reload();
-    } catch (e) { fail(e); sync.disabled = false; sync.textContent = "Sync with Stripe"; }
+    } catch (e) { fail(e); sync.disabled = false; sync.textContent = "Sync with Stripe and Mercury"; }
   });
 
   const summaries = (r.currencies ?? []).map((c) => {
@@ -1834,7 +1835,8 @@ async function books() {
       el("label", {}, "Business use %", pct), note, el("label", {}, "Receipt (photo or PDF, optional)", file), save),
       groupTitle(`Expenses · ${r.label}`),
       (r.expenses ?? []).length ? group(...r.expenses.map((e) => el("li", { class: "kv" },
-        el("span", { class: "kv-label" }, `${e.vendor} · ${[e.spent_on, BOOKS_CATEGORIES[e.category], BOOKS_APPS[e.app], e.business_pct < 100 ? `${e.business_pct}% business` : null].filter(Boolean).join(" · ")}`),
+        el("span", { class: "kv-label" }, `${e.vendor} · ${[e.spent_on, BOOKS_CATEGORIES[e.category], BOOKS_APPS[e.app], e.source === "mercury" ? "Mercury" : null, e.business_pct < 100 ? `${e.business_pct}% business` : null].filter(Boolean).join(" · ")}`,
+          e.needs_review ? el("strong", { class: "warn-text" }, " · Check category (in the app)") : null),
         el("span", { class: "kv-value" }, money(Number(e.amount_cents), e.currency), " ",
           e.receipt_path ? (() => { const b = el("button", { type: "button", class: "link-button" }, "Receipt");
             b.addEventListener("click", async () => { const { data } = await supabase.storage.from("books-receipts").createSignedUrl(e.receipt_path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener"); });
@@ -1928,12 +1930,22 @@ async function books() {
       hint("Home office uses the IRS simplified method ($5 per sq ft, up to 300 sq ft a year) and shows in the Year view. Use the IRS standard mileage rate; check with your CPA.")];
   }
 
-  const csv = el("button", { type: "button", class: "button secondary" }, "Export for your CPA (CSV)");
+  // TJ (2026-10-23): the report as a printable page; the browser's print screen also saves it as a PDF.
+  const printBtn = el("button", { type: "button", class: "button secondary" }, "Print or save as PDF");
+  printBtn.addEventListener("click", async () => {
+    const w = window.open("", "_blank");
+    try {
+      const { data, error } = await supabase.functions.invoke("books", { body: { action: "print", period: st.period, anchor: ymd(st.anchor) } });
+      if (error || !data?.html) throw error ?? new Error(data?.error ?? "Couldn't prepare the page.");
+      w.document.open(); w.document.write(data.html); w.document.close(); w.focus(); w.print();
+    } catch (e) { w?.close(); fail(e); }
+  });
+  const csv = el("button", { type: "button", class: "button secondary" }, "Export for your CPA (CSV spreadsheet)");
   csv.addEventListener("click", () => {
     const q = (v) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const a = (c) => (Number(c) / 100).toFixed(2);
     const lines = ["type,date,app,category_or_kind,description,amount,fee,currency,business_pct,source"];
-    for (const e of r.expenses ?? []) lines.push(["expense", e.spent_on, e.app, e.category, q(`${e.vendor}${e.note ? ` — ${e.note}` : ""}`), a(e.amount_cents), "0", e.currency, e.business_pct, "manual"].join(","));
+    for (const e of r.expenses ?? []) lines.push(["expense", e.spent_on, e.app, e.category, q(`${e.vendor}${e.note ? ` — ${e.note}` : ""}`), a(e.amount_cents), "0", e.currency, e.business_pct, e.source ?? "manual"].join(","));
     for (const i of (r.income ?? []).filter((x) => !x.is_test)) lines.push(["income", i.occurred_at.slice(0, 10), i.app, i.kind, q(i.description), a(i.amount_cents), a(i.fee_cents), i.currency, "", i.source].join(","));
     for (const t of r.trips ?? []) lines.push(["mileage", t.driven_on, "company", "car", q(t.purpose), t.miles, "0", "MI", "100", "manual"].join(","));
     for (const m of r.owner_moves ?? []) lines.push([`owner_${m.kind}`, m.moved_on, "company", m.method, q(m.note), a(m.amount_cents), "0", m.currency, "", "manual"].join(","));
@@ -1943,11 +1955,12 @@ async function books() {
 
   show(back("Company Books"),
     el("div", { class: "form-stack" }, periodSel, el("div", { class: "btn-row" }, prev, el("strong", {}, r.label), next), sync,
-      r.stripe_synced_at ? hint(`Last synced ${dateTime(r.stripe_synced_at)}`) : null,
+      (r.mercury_synced_at ?? r.stripe_synced_at) ? hint(`Last synced ${dateTime(r.mercury_synced_at ?? r.stripe_synced_at)}`) : null,
+      Number(r.to_review) ? el("p", { class: "warn-text" }, `${r.to_review} Mercury expense${r.to_review == 1 ? "" : "s"} to check: open it in the Geerho app, pick the category, Save. The Books remember it for that vendor.`) : null,
       st.note ? el("p", { class: "status good" }, st.note) : null, err),
     ...summaries.flat(),
     Number(r.test_rows) ? hint(`${r.test_rows} Stripe test-mode transactions aren't counted.`) : null,
-    tabBtns, ...body, el("div", { class: "btn-row" }, csv),
+    tabBtns, ...body, el("div", { class: "btn-row" }, printBtn, csv),
     hint("Bookkeeping to share with your CPA, not a tax filing. Payouts move money to the bank; they aren't income."));
   st.note = null;
 }
