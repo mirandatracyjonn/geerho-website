@@ -420,6 +420,8 @@ function reportSummary(item) {
   if (item.review_reason === "tracking_overdue") parts.push("Tracking overdue");
   if (item.review_reason === "prohibited_terms") parts.push("Possible prohibited item");
   if (item.review_reason === "fair_housing") parts.push("Possible fair housing issue");
+  if (item.review_reason === "ai_suggests") parts.push("AI screening suggests a look"); // M163
+  if (item.review_reason === "ai") parts.push("Held by AI screening");
   if (item.report_count > 0) {
     const names = (item.reasons ?? []).map((r) => REPORT_REASONS[r]).filter(Boolean).join(", ");
     parts.push(`${item.report_count} report${item.report_count === 1 ? "" : "s"}${names ? `: ${names}` : ""}`);
