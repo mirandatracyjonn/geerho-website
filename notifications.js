@@ -30,6 +30,7 @@ function linkFor(item) {
     case "invites": return "account.html#invites";
     case "calendar": return "admin.html#calendar";
     case "ai_office": return "admin.html#ai-office";
+    case "tax_helper": return "admin.html#tax";
     case "watching": return "account.html#watching";
     case "licenses": return "account.html#licenses";
     case "security": return "account.html#security";

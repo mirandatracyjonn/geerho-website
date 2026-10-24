@@ -224,6 +224,7 @@ async function overview() {
       owner ? stat("Shared Pages", "Write", { detail: "Pages anyone with the link can read, or private", iconName: "doc", tint: "blue", href: "#pages" }) : null),
     booksOwner ? groupTitle("Geerho Tech LLC") : null,
     booksOwner ? group(stat("Company Books", "Open", { detail: "Expenses, Stripe income, mileage, profit · Geerho, Xenpen, Klean", iconName: "dollar", tint: "green", href: "#books" }),
+                       stat("Tax Helper", "Open", { detail: "Reimburse yourself · home office (Form 8829) · car · W-9s and 1099s", iconName: "dollar", tint: "orange", href: "#tax" }),
                        stat("AI Office", "Open", { detail: "Weekly community report · marketing drafts", iconName: "star", tint: "purple", href: "#ai-office" })) : null,
     groupTitle("Team, categories, and settings"),
     group(
@@ -1864,7 +1865,7 @@ async function books() {
       kv("Passed to sellers", `−${m(c.passed_to_sellers_cents)}`), kv("Payment processing fees", `−${m(c.processing_fees_cents)}`),
       kv("Net revenue", m(c.net_revenue_cents)), kv("Expenses (business share)", `−${m(c.expenses_cents)}`),
       isUsd && Number(r.mileage.deduction_cents) > 0 ? kv(`Mileage (${r.mileage.miles} mi)`, `−${m(r.mileage.deduction_cents)}`) : null,
-      isUsd && Number(r.home_office_cents) > 0 ? kv("Home office (simplified)", `−${m(r.home_office_cents)}`) : null,
+      isUsd && Number(r.home_office_cents) > 0 ? kv(r.home_method === "actual" ? "Home office (Form 8829)" : "Home office (simplified)", `−${m(r.home_office_cents)}`) : null,
       kv("Profit", m(profit))),
       Number(c.payouts_cents) ? hint(`Paid out to the bank: ${m(c.payouts_cents)}`) : null];
   });
@@ -1890,6 +1891,8 @@ async function books() {
     const pct = el("input", { type: "number", min: "1", max: "100", value: "100", "aria-label": "Business use %" });
     const note = el("input", { placeholder: "Note (optional)", maxlength: "500", "aria-label": "Note" });
     const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/heic,application/pdf", "aria-label": "Receipt" });
+    const paidWith = el("select", { "aria-label": "Paid with" }, ...options(TAX_PAID_WITH, ""));   // M196 (Tax Helper)
+    const personal = el("input", { type: "checkbox" });
     const save = el("button", { type: "button", class: "button" }, "Add expense");
     save.addEventListener("click", async () => {
       const cents = Math.round(parseFloat(amount.value) * 100);
@@ -1905,18 +1908,24 @@ async function books() {
           const { error } = await supabase.storage.from("books-receipts").upload(path, f, { contentType: f.type || "image/jpeg" });
           if (error) throw error;
         }
-        await rpc("books_save_expense", { expense: null, spent_on: date.value, vendor: vendor.value.trim(), category: cat.value, amount_cents: cents,
+        const saved = await rpc("books_save_expense", { expense: null, spent_on: date.value, vendor: vendor.value.trim(), category: cat.value, amount_cents: cents,
           currency: cur.value, app: app.value, business_pct: Number(pct.value) || 100, note: note.value.trim() || null, receipt_path: path });
+        await rpc("tax_set_expense_payment", { expense: saved, paid_with: paidWith.value || null, paid_from: personal.checked ? "personal" : "business" });
         reload();
       } catch (e) { fail(e); save.disabled = false; }
     });
     body = [groupTitle("Add an expense"), el("div", { class: "form-stack" }, date, vendor, cat, amount, cur, app,
-      el("label", {}, "Business use %", pct), note, el("label", {}, "Receipt (photo or PDF, optional)", file), save),
+      el("label", {}, "Business use %", pct), note, el("label", {}, "Paid with", paidWith), el("label", { class: "check-row" }, personal, " Paid with my personal money"),
+      el("label", {}, "Receipt (photo or PDF, optional)", file), save),
+      hint("Card and PayPal/Venmo payments don't need a 1099-NEC. Costs you paid personally go on next month's owner expense report (Tax Helper)."),
       groupTitle(`Expenses · ${r.label}`),
       (r.expenses ?? []).length ? group(...r.expenses.map((e) => el("li", { class: "kv" },
         el("span", { class: "kv-label" }, `${e.vendor} · ${[e.spent_on, BOOKS_CATEGORIES[e.category], BOOKS_APPS[e.app], e.source === "mercury" ? "Mercury" : null, e.business_pct < 100 ? `${e.business_pct}% business` : null].filter(Boolean).join(" · ")}`,
           e.needs_review ? el("strong", { class: "warn-text" }, " · Check category (in the app)") : null),
-        el("span", { class: "kv-value" }, money(Number(e.amount_cents), e.currency), " ",
+        el("span", { class: "kv-value" }, money(Number(e.amount_cents), e.currency), " ", (() => {
+            const s2 = el("select", { "aria-label": `How ${e.vendor} was paid` }, ...options({ ...TAX_PAID_WITH, "": "Paid with?" }, e.paid_with ?? ""));
+            s2.addEventListener("change", async () => { try { await rpc("tax_set_expense_payment", { expense: e.id, paid_with: s2.value || null, paid_from: e.paid_from ?? "business" }); } catch (x) { fail(x); } });
+            return s2; })(), e.paid_from === "personal" ? " · paid personally " : " ",
           e.receipt_path ? (() => { const b = el("button", { type: "button", class: "link-button" }, "Receipt");
             b.addEventListener("click", async () => { const { data } = await supabase.storage.from("books-receipts").createSignedUrl(e.receipt_path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener"); });
             return b; })() : null, " ", del("books_delete_expense", "expense", e.id))))) : hint("No expenses in this period.")];
@@ -2004,9 +2013,9 @@ async function books() {
       try { await rpc("books_save_settings", { mileage_rate_cents: Number(rate.value) || 70, office_sqft: office.value ? Number(office.value) : null, home_sqft: home.value ? Number(home.value) : null }); st.note = "Settings saved."; reload(); }
       catch (e) { fail(e); }
     });
-    body = [groupTitle("Settings"), el("div", { class: "form-stack" }, el("label", {}, "Mileage rate (cents/mile)", rate),
+    body = [groupTitle("Settings"), el("div", { class: "form-stack" },
       el("label", {}, "Home office (sq ft)", office), el("label", {}, "Whole home (sq ft)", home), save),
-      hint("Home office uses the IRS simplified method ($5 per sq ft, up to 300 sq ft a year) and shows in the Year view. Use the IRS standard mileage rate; check with your CPA.")];
+      hint("The home office and its method (simplified or Form 8829) are in Tax Helper; the deduction shows in the Year view. Mileage uses the IRS rate of each trip's day (Tax Helper → Car).")];
   }
 
   // TJ (2026-10-23): the report as a printable page; the browser's print screen also saves it as a PDF.
@@ -2044,6 +2053,218 @@ async function books() {
   st.note = null;
 }
 
+// --- M195 Tax Helper (TJ, 2026-10-24, after the CPA call), like the apps: Super Admin 1 only. The monthly owner expense
+// report, the home office (simplified vs Form 8829), the car (IRS rates by date, odometer, trips) and vendors with W-9s
+// and 1099-NEC. Files go to the private Company Books bucket. Bookkeeping for the CPA, not tax advice.
+
+const TAX_HOME_KINDS = { mortgage_interest: "Mortgage interest", real_estate_tax: "Real estate taxes", insurance: "Insurance (home, earthquake)",
+  rent: "Rent", repairs: "Repairs and maintenance", electricity: "Electricity", gas: "Gas", water: "Water", trash: "Trash", internet: "Internet",
+  hoa: "HOA dues", other: "Other" };
+const TAX_ENTITIES = { unknown: "Not known yet (no W-9)", individual: "Individual / sole proprietor", single_llc: "Single-member LLC",
+  partnership: "Partnership", c_corp: "C corporation", s_corp: "S corporation", llc_c: "LLC taxed as C corp", llc_s: "LLC taxed as S corp",
+  llc_p: "LLC taxed as partnership", trust: "Trust / estate", other: "Other" };
+const TAX_PAID_WITH = { "": "Not set", card: "Card (debit or credit)", bank_transfer: "Bank transfer (ACH, wire, Zelle)", check: "Check",
+  cash: "Cash", payment_app: "PayPal, Venmo, Cash App", other: "Other" };
+const taxState = { year: new Date().getFullYear(), tab: "reimburse" };
+const usd = (cents) => money(Number(cents ?? 0), "USD").replace(/^Free$/, money(0, "USD"));
+const dayText = (d) => d ? new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+const monthText = (d) => d ? new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "";
+
+/** Uploads a photo or PDF to the private Company Books bucket; returns its path (or null when no file was chosen). */
+async function booksUpload(input) {
+  const f = input.files?.[0];
+  if (!f) return null;
+  if (f.size > 10 * 1024 * 1024) throw new Error("The file is over 10 MB.");
+  const ext = { "image/png": "png", "image/heic": "heic", "application/pdf": "pdf" }[f.type] ?? "jpg";
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("books-receipts").upload(path, f, { contentType: f.type || "image/jpeg" });
+  if (error) throw error;
+  return path;
+}
+function booksFileButton(path, label) {
+  const b = el("button", { type: "button", class: "link-button" }, label);
+  b.addEventListener("click", async () => { const { data } = await supabase.storage.from("books-receipts").createSignedUrl(path, 300); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener"); });
+  return b;
+}
+
+async function taxHelper() {
+  show(back("Tax Helper"), loading());
+  if (!(await rpc("books_is_owner").catch(() => false))) { location.hash = ""; return; }
+  const st = taxState;
+  const d = await rpc("tax_helper", { year: st.year });
+  const reload = () => taxHelper();
+  const err = el("p", { class: "status bad", role: "alert", hidden: true });
+  const fail = (e) => { err.textContent = friendlyError(e); err.hidden = false; };
+  const run = async (fn, params) => { try { await rpc(fn, params); reload(); } catch (e) { fail(e); } };
+  const button = (text, onClick, cls = "button") => { const b = el("button", { type: "button", class: cls }, text); b.addEventListener("click", onClick); return b; };
+  const del = (fn, param, id) => button("Delete", () => run(fn, { [param]: id }), "link-button");
+  const cents = (v) => v === "" || v == null ? null : Math.round(parseFloat(v) * 100);
+
+  const yearRow = el("div", { class: "actions-row" },
+    button("‹", () => { if (st.year > 2026) { st.year--; reload(); } }, "button secondary"), el("strong", {}, ` Tax year ${st.year} `),
+    button("›", () => { st.year++; reload(); }, "button secondary"));
+  const tabs = el("div", { class: "segmented" }, ...[["reimburse", "Reimburse"], ["home", "Home office"], ["car", "Car"], ["vendors", "Vendors"]].map(([v, t]) => {
+    const b = el("button", { type: "button", "aria-pressed": String(v === st.tab) }, t);
+    b.addEventListener("click", () => { st.tab = v; reload(); });
+    return b;
+  }));
+
+  let body = [];
+  if (st.tab === "reimburse") {
+    const items = d.this_month.items ?? [];
+    body = [groupTitle(`This month (${monthText(d.this_month.month)})`),
+      group(...items.map((i) => kv(i.label, usd(i.cents))), kv("So far", usd(items.reduce((s, i) => s + Number(i.cents), 0)))),
+      hint("Mark an expense \"Paid with my personal money\" in Company Books and it shows here. On the 1st, Geerho adds up last month and notifies you."),
+      groupTitle("Monthly owner expense reports"),
+      (d.owner_reports ?? []).length ? group(...d.owner_reports.map((r) => el("li", { class: "item" },
+        el("div", { class: "kv" }, el("strong", { class: "kv-label" }, monthText(r.month)), el("strong", { class: "kv-value" }, usd(r.total_cents))),
+        ...(r.items ?? []).map((i) => el("div", { class: "kv" }, el("small", { class: "kv-label" }, i.label), el("small", { class: "kv-value" }, usd(i.cents)))),
+        r.status === "reimbursed"
+          ? el("p", {}, el("span", { class: "good-text" }, `Reimbursed ${dayText(r.reimbursed_on)} ✓ `), button("Undo", () => run("tax_owner_report_undo", { month: r.month }), "link-button"))
+          : Number(r.total_cents) > 0 ? button("Mark Reimbursed Today", () => run("tax_owner_report_reimburse", { month: r.month, paid_on: ymd(new Date()) })) : null)))
+        : hint("No monthly reports yet."),
+      hint("Move the total from Geerho Tech LLC's checking to your personal account (Mercury), then tap Mark Reimbursed. It's recorded as an owner reimbursement, not income or an extra expense.")];
+  } else if (st.tab === "home") {
+    const f = d.form_8829;
+    const di = (o) => Number(o.direct) > 0 ? `${usd(o.indirect)} + ${usd(o.direct)} office` : usd(o.indirect);
+    const ys = d.year_settings;
+    const method = el("select", { "aria-label": "Method" }, ...options({ simplified: "Simplified", actual: "Actual (Form 8829)" }, d.home_method));
+    const homeCost = el("input", { type: "number", step: "0.01", min: "0", value: ys.home_cost_cents != null ? (ys.home_cost_cents / 100).toFixed(2) : "", "aria-label": "Home cost" });
+    const land = el("input", { type: "number", step: "0.01", min: "0", value: ys.land_cents != null ? (ys.land_cents / 100).toFixed(2) : "", "aria-label": "Land value" });
+    const started = el("input", { type: "date", value: ys.office_started_on ?? "", "aria-label": "Office in use since" });
+    const carryOp = el("input", { type: "number", step: "0.01", min: "0", value: Number(ys.carryover_operating_cents) ? (ys.carryover_operating_cents / 100).toFixed(2) : "", "aria-label": "Carryover operating" });
+    const carryDep = el("input", { type: "number", step: "0.01", min: "0", value: Number(ys.carryover_depreciation_cents) ? (ys.carryover_depreciation_cents / 100).toFixed(2) : "", "aria-label": "Carryover depreciation" });
+    const saveYear = button("Save", () => run("tax_save_year", { year: d.year, home_method: method.value, home_cost_cents: cents(homeCost.value),
+      land_cents: cents(land.value), office_started_on: started.value || null, carryover_operating_cents: cents(carryOp.value) ?? 0,
+      carryover_depreciation_cents: cents(carryDep.value) ?? 0 }));
+    const date = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Paid on" });
+    const kind = el("select", { "aria-label": "What" }, ...options(TAX_HOME_KINDS, "mortgage_interest"));
+    const label = el("input", { placeholder: "Label (optional), e.g. 2nd mortgage", maxlength: "80", "aria-label": "Label" });
+    const amount = el("input", { type: "number", step: "0.01", min: "0.01", placeholder: "Amount", "aria-label": "Amount" });
+    const scope = el("select", { "aria-label": "For" }, ...options({ indirect: "Whole home", direct: "Office only" }, "indirect"));
+    const from = el("select", { "aria-label": "Paid from" }, ...options({ personal: "My personal money", business: "The LLC's account" }, "personal"));
+    const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/heic,application/pdf", "aria-label": "Statement" });
+    const add = button("Add home cost", async () => {
+      if (!(cents(amount.value) > 0)) { fail(new Error("Enter the amount.")); return; }
+      try {
+        const path = await booksUpload(file);
+        await rpc("tax_save_home_expense", { expense: null, paid_on: date.value, kind: kind.value, label: label.value.trim() || null,
+          amount_cents: cents(amount.value), scope: scope.value, paid_from: from.value, receipt_path: path, note: null });
+        reload();
+      } catch (e) { fail(e); }
+    });
+    body = [groupTitle("Your home"), group(kv("Office", f.line1_sqft ? `${f.line1_sqft} sq ft` : "Not set"), kv("Whole home", f.line2_sqft ? `${f.line2_sqft} sq ft` : "Not set"),
+        kv("Business share (line 7)", `${f.line7_pct}%`)),
+      hint("Set the square footage in Company Books → Settings. The office must be used regularly and only for the business."),
+      groupTitle("Which method"), group(kv("Simplified ($5 × up to 300 sq ft)", usd(f.simplified_cents)), kv("Actual (Form 8829 line 36)", usd(f.line36)),
+        kv("Using", d.home_method === "actual" ? "Actual (Form 8829)" : "Simplified")),
+      hint(`${Number(f.line36) > Number(f.simplified_cents) ? "The actual method is bigger this year." : "The simplified method is as big or bigger, and avoids depreciation recapture when you sell the house."} Both are limited by the business's income (line 8: ${usd(f.line8_cents)} so far); what's over carries to next year on the actual method.`),
+      el("div", { class: "form-stack" }, el("label", {}, `Method for ${d.year}`, method), el("label", {}, "Home cost (smaller of cost plus improvements, or value)", homeCost),
+        el("label", {}, "Land value included in that", land), el("label", {}, "Office in business use since", started),
+        el("label", {}, "Carryover: operating expenses (last year line 43)", carryOp), el("label", {}, "Carryover: depreciation (last year line 44)", carryDep), saveYear),
+      hint("Only the office part of the building (not land) is depreciated, over 39 years. Your county tax bill shows land and improvement values; ask your CPA which numbers to use."),
+      groupTitle(`Form 8829 (${d.year})`), group(kv("10 Mortgage interest", di(f.line10)), kv("11 Real estate taxes", di(f.line11)),
+        kv("13 Business share of 10–11", usd(f.line13)), kv("15 Income left after 14", usd(f.line15)), kv("18 Insurance", di(f.line18)),
+        kv("19 Rent", di(f.line19)), kv("20 Repairs", di(f.line20)), kv("21 Utilities", di(f.line21)), kv("22 Other", di(f.line22)),
+        kv("24 Business share of 18–22", usd(f.line24)), kv("25 Carryover from last year", usd(f.line25)), kv("27 Allowed operating expenses", usd(f.line27)),
+        kv(`42 Depreciation (${f.line41_pct}%)`, usd(f.line42)), kv("33 Allowed depreciation", usd(f.line33)),
+        kv("36 Home office deduction", usd(f.line36)), kv("43–44 Carry to next year", usd(Number(f.line43) + Number(f.line44)))),
+      groupTitle("Add a home cost"), el("div", { class: "form-stack" }, date, kind, label, amount, scope, from, el("label", {}, "Statement (photo or PDF, optional)", file), add),
+      hint("Each month: the interest part of each mortgage payment (not principal), property tax and insurance from escrow, utilities and repairs. \"Whole home\" costs get the business share; \"office only\" counts in full."),
+      groupTitle("Home costs"),
+      (d.home_expenses ?? []).length ? group(...d.home_expenses.map((h) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, `${h.label ?? TAX_HOME_KINDS[h.kind]} · ${[dayText(h.paid_on), TAX_HOME_KINDS[h.kind], h.scope === "direct" ? "office only" : "whole home", h.paid_from === "personal" ? "paid personally" : "paid by the LLC"].join(" · ")}`),
+        el("span", { class: "kv-value" }, usd(h.amount_cents), " ", h.receipt_path ? booksFileButton(h.receipt_path, "Statement") : null, " ", del("tax_delete_home_expense", "expense", h.id)))))
+        : hint("No home costs this year.")];
+  } else if (st.tab === "car") {
+    const c = d.car;
+    const odoDate = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Date" });
+    const odoCar = el("input", { value: "Car", maxlength: "60", "aria-label": "Car" });
+    const odoMiles = el("input", { type: "number", min: "0", placeholder: "Odometer miles", "aria-label": "Odometer miles" });
+    const odoFile = el("input", { type: "file", accept: "image/jpeg,image/png,image/heic", "aria-label": "Photo" });
+    const addOdo = button("Add reading", async () => {
+      if (!(Number(odoMiles.value) >= 0) || odoMiles.value === "") { fail(new Error("Enter the odometer miles.")); return; }
+      try { const path = await booksUpload(odoFile); await rpc("tax_save_odometer", { reading: null, vehicle: odoCar.value, read_on: odoDate.value, miles: Number(odoMiles.value), photo_path: path, note: null }); reload(); }
+      catch (e) { fail(e); }
+    });
+    const tDate = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Date" });
+    const tMiles = el("input", { type: "number", step: "0.1", min: "0.1", placeholder: "Round-trip miles", "aria-label": "Miles" });
+    const tPurpose = el("input", { placeholder: "Business reason", maxlength: "200", "aria-label": "Business reason" });
+    const tWith = el("input", { placeholder: "Who you met (optional)", maxlength: "120", "aria-label": "Who you met" });
+    const tFrom = el("input", { placeholder: "From (optional)", maxlength: "120", "aria-label": "From" });
+    const tTo = el("input", { placeholder: "To (optional)", maxlength: "120", "aria-label": "To" });
+    const addTrip = button("Log trip", () => {
+      if (!(parseFloat(tMiles.value) > 0) || !tPurpose.value.trim()) { fail(new Error("Enter the miles and the business reason.")); return; }
+      run("tax_save_trip", { trip: null, driven_on: tDate.value, miles: parseFloat(tMiles.value), purpose: tPurpose.value.trim(), met_with: tWith.value.trim() || null,
+        from_place: tFrom.value.trim() || null, to_place: tTo.value.trim() || null, vehicle: "Car" });
+    });
+    const rDate = el("input", { type: "date", value: `${new Date().getFullYear() + 1}-01-01`, "aria-label": "Starts" });
+    const rCents = el("input", { type: "number", step: "0.5", min: "0", placeholder: "Cents a mile, e.g. 72.5", "aria-label": "Cents a mile" });
+    const addRate = button("Add rate", () => { if (!(parseFloat(rCents.value) > 0)) { fail(new Error("Enter the rate.")); return; } run("tax_save_mileage_rate", { effective_on: rDate.value, cents: parseFloat(rCents.value) }); }, "button secondary");
+    body = [groupTitle("This year"), group(
+        kv("Odometer, start of year", c.odometer_start != null ? `${Number(c.odometer_start).toLocaleString()} mi` : "Add a Jan 1 reading"),
+        kv("Odometer, end of year", c.odometer_end != null ? `${Number(c.odometer_end).toLocaleString()} mi` : "Add a Dec 31 reading"),
+        kv("Business miles", `${Number(c.business_miles).toLocaleString()} mi`), c.business_pct != null ? kv("Business share", `${c.business_pct}%`) : null,
+        kv("Standard mileage", usd(c.standard_cents)), kv("Actual car costs (Car category)", usd(c.actual_costs_cents)),
+        c.actual_business_cents != null ? kv("Actual, business share", usd(c.actual_business_cents)) : null),
+      hint("Standard mileage is usually better (the CPA said the same). To compare, record gas, insurance, repairs and registration as Car expenses in Company Books."),
+      groupTitle("Add an odometer reading"), el("div", { class: "form-stack" }, odoDate, odoCar, odoMiles, el("label", {}, "Photo of the odometer (optional)", odoFile), addOdo),
+      (d.odometer ?? []).length ? group(...d.odometer.map((o) => el("li", { class: "kv" }, el("span", { class: "kv-label" }, `${dayText(o.read_on)} · ${o.vehicle}`),
+        el("span", { class: "kv-value" }, `${Number(o.miles).toLocaleString()} mi `, o.photo_path ? booksFileButton(o.photo_path, "Photo") : null, " ", del("tax_delete_odometer", "reading", o.id))))) : null,
+      hint("A photo of the odometer every January 1 (the calendar reminds you)."),
+      groupTitle("Log a business trip"), el("div", { class: "form-stack" }, tDate, tMiles, tPurpose, tWith, tFrom, tTo, addTrip),
+      (d.trips ?? []).length ? group(...d.trips.map((t) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, `${t.purpose} · ${[dayText(t.driven_on), t.met_with ? `with ${t.met_with}` : null, [t.from_place, t.to_place].filter(Boolean).join(" → ") || null, `${t.rate_cents}¢/mi`].filter(Boolean).join(" · ")}`),
+        el("span", { class: "kv-value" }, `${t.miles} mi `, del("books_delete_trip", "trip", t.id))))) : hint("No trips this year."),
+      hint("Round-trip miles, the business reason, and who you met. Commuting doesn't count."),
+      groupTitle("IRS standard mileage rates"), group(...(d.mileage_rates ?? []).map((r) => kv(`From ${dayText(r.effective_on)}`, `${r.cents}¢ a mile`))),
+      el("div", { class: "form-stack" }, rDate, rCents, addRate),
+      hint("Each trip uses the rate of its day. 2026: 72.5¢, and 76¢ from July 1 (IRS Announcement 2026-11).")];
+  } else {
+    const vendorForm = (v, prefillName) => {
+      const name = el("input", { value: v?.name ?? prefillName ?? "", placeholder: "Name (as on the W-9 and in Company Books)", maxlength: "120", "aria-label": "Name" });
+      const entity = el("select", { "aria-label": "Type" }, ...options(TAX_ENTITIES, v?.entity ?? "unknown"));
+      const attorney = el("input", { type: "checkbox", ...(v?.is_attorney ? { checked: "" } : {}) });
+      const email = el("input", { type: "email", value: v?.email ?? "", placeholder: "Email (optional)", "aria-label": "Email" });
+      const w9 = el("input", { type: "date", value: v?.w9_received_on ?? "", "aria-label": "W-9 received on" });
+      const last4 = el("input", { inputmode: "numeric", maxlength: "4", value: v?.tin_last4 ?? "", placeholder: "Last 4 of SSN or EIN", "aria-label": "Last 4 digits" });
+      const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/heic,application/pdf", "aria-label": "W-9 file" });
+      const save = button(v ? "Save vendor" : "Add vendor", async () => {
+        if (!name.value.trim()) { fail(new Error("Enter the vendor's name.")); return; }
+        try {
+          const path = (await booksUpload(file)) ?? v?.w9_path ?? null;
+          await rpc("tax_save_vendor", { vendor: v?.id ?? null, name: name.value.trim(), entity: entity.value, is_attorney: attorney.checked, email: email.value.trim() || null,
+            w9_received_on: w9.value || (path && !v?.w9_received_on ? ymd(new Date()) : null), w9_path: path, tin_last4: last4.value.trim() || null, note: v?.note ?? null });
+          reload();
+        } catch (e) { fail(e); }
+      });
+      return el("div", { class: "form-stack" }, name, el("label", {}, "Type (W-9 box 3)", entity), el("label", { class: "check-row" }, attorney, " Attorney or law firm"),
+        email, el("label", {}, "W-9 received on", w9), last4, el("label", {}, "W-9 (photo or PDF)", file), save);
+    };
+    const editing = location.hash.split("/")[1];
+    body = [groupTitle("W-9 and 1099-NEC"),
+      el("p", {}, `Before you pay a contractor, landlord or attorney, get a W-9. In January, send a 1099-NEC to each one you paid ${usd(d.nec_threshold_cents)} or more in ${d.year} by bank transfer, check or cash. Card and PayPal/Venmo payments are reported by the card company instead. Corporations don't get one, but attorneys always do.`),
+      el("p", {}, el("a", { href: "https://www.irs.gov/pub/irs-pdf/fw9.pdf", target: "_blank", rel: "noopener" }, "Blank W-9 (IRS)"), " · ",
+        el("a", { href: "https://www.irs.gov/filing/e-file-information-returns-with-iris", target: "_blank", rel: "noopener" }, "File 1099s free with IRS IRIS")),
+      (d.unlisted_payees ?? []).length ? [groupTitle("Paid but no W-9 on file"), group(...d.unlisted_payees.map((p) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, p.vendor), el("span", { class: "kv-value" }, usd(p.paid_cents), " ",
+          button("Add", () => { location.hash = `tax/new:${encodeURIComponent(p.vendor)}`; }, "link-button"))))), hint("Add each as a vendor and attach its W-9.")] : null,
+      editing?.startsWith("new:") ? [groupTitle("Add a vendor"), vendorForm(null, decodeURIComponent(editing.slice(4)))]
+        : editing && d.vendors.find((v) => v.id === editing) ? [groupTitle("Edit vendor"), vendorForm(d.vendors.find((v) => v.id === editing))]
+        : [groupTitle("Add a vendor"), vendorForm(null)],
+      groupTitle(`Vendors (${d.year} payments)`),
+      (d.vendors ?? []).length ? group(...d.vendors.map((v) => el("li", { class: "kv" },
+        el("span", { class: "kv-label" }, v.name, " · ",
+          v.needs_1099 ? el("strong", { class: "warn-text" }, "Needs 1099-NEC · ") : null,
+          v.w9_received_on ? `W-9 ${dayText(v.w9_received_on)}` : el("span", { class: "bad-text" }, "No W-9"), ` · ${TAX_ENTITIES[v.entity]}${v.is_attorney ? " · attorney" : ""}`,
+          Number(v.unknown_method_cents) > 0 ? el("small", {}, ` · ${usd(v.unknown_method_cents)} without "Paid with" set (counted as reportable)`) : null),
+        el("span", { class: "kv-value" }, usd(v.paid_cents), " ", v.w9_path ? booksFileButton(v.w9_path, "W-9") : null, " ",
+          button("Edit", () => { location.hash = `tax/${v.id}`; }, "link-button"), " ", del("tax_delete_vendor", "vendor", v.id))))) : hint("No vendors yet."),
+      hint("Payments match a vendor by its name in Company Books. Only the last 4 digits of the SSN or EIN are saved; the full number stays in the W-9 file, which only you can open.")];
+  }
+  show(back("Tax Helper"), yearRow, tabs, hint("Bookkeeping for your CPA, not tax advice. Your CPA confirms what you claim."), err, ...body.flat());
+}
+
 async function route() {
   const [name, arg] = location.hash.replace(/^#/, "").split("/");
   try {
@@ -2079,6 +2300,7 @@ async function route() {
       case "categories": return await categoryRequests();
       case "books": return await books();
       case "ai-office": return await aiOffice(arg);
+      case "tax": return await taxHelper();
       case "calendar": return await businessCalendar();
       case "pages": return await sharedPages(arg);
       case "propose": return proposeCategory();

@@ -1209,3 +1209,7 @@ label.choice input { margin-top: 3px; }
 .cta-qr img { background: #fff; padding: 6px; border-radius: 12px; display: block; }
 .cta-qr figcaption { font-size: 0.75rem; margin-top: 4px; opacity: 0.85; }
 @media (min-width: 900px) and (hover: hover) { .cta-qr { display: block; } }
+
+/* M195 Tax Helper (admin.html#tax) */
+.actions-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0; }
+.good-text { color: var(--success, #34c759); font-weight: 600; }
