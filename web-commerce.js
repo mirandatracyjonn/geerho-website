@@ -56,8 +56,17 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
   const note = el("textarea", { name: "note", maxlength: 500, placeholder: "Note to the seller (optional)" });
   const error = el("p", { class: "status bad", role: "alert", hidden: true });
   const button = el("button", { type: "submit" }, auctionWin ? "Complete Purchase" : "Buy Now");
+  // M189: Geerho holds payments up to $2,500 / ₱150,000; above that the buyer pays the seller directly.
+  const { data: cap } = await supabase.rpc("in_app_payment_cap", { currency: listing.currency });
+  const capCents = cap ?? (listing.currency === "PHP" ? 15000000 : 250000);
+  const itemCents = auctionWin ? (listing.current_bid_cents ?? listing.price_cents)
+    : listing.listing_format === "auction" ? (listing.buy_now_cents ?? listing.price_cents) : listing.price_cents;
+  const overCap = itemCents > capCents;
+  if (overCap) button.textContent = auctionWin ? "Complete Purchase" : "Request to Buy";
   form.append(choice, address, note, button, error,
-    el("p", { class: "hint" }, "If the seller takes card payments, you pay now and Geerho holds the money until you have the item. The seller has 24 hours to accept."));
+    el("p", { class: "hint" }, overCap
+      ? `This is over ${money(capCents, listing.currency)}, so it isn't paid in the app: once the seller accepts, you pay them directly. Geerho's buyer protection and refunds don't cover payments made outside Geerho. Never pay with gift cards.`
+      : "If the seller takes card payments, you pay now and Geerho holds the money until you have the item. The seller has 24 hours to accept."));
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     error.hidden = true;
@@ -75,12 +84,15 @@ export async function buyPanel(listing, { auctionWin = false } = {}) {
       error.hidden = false;
       return;
     }
-    const { data: cards } = await supabase.rpc("accepts_card_payments", { seller: listing.seller_id });
+    const { data: takesCards } = await supabase.rpc("accepts_card_payments", { seller: listing.seller_id });
+    const cards = takesCards && !overCap;
     if (cards) {
       const { data: session, error: payError } = await supabase.functions.invoke("payments", { body: { action: "checkout", order_id: orderId, from: "web" } });
       if (!payError && session?.url) { location.href = session.url; return; }
     }
-    form.replaceWith(el("div", {}, el("p", { class: "status good" }, cards
+    form.replaceWith(el("div", {}, el("p", { class: "status good" }, overCap
+      ? `Your request is in. Payments over ${money(capCents, listing.currency)} are made directly to the seller once they accept, outside Geerho, so Geerho's buyer protection doesn't cover them. Meet in person, check the item and its papers, and use a bank transfer or escrow you trust.`
+      : cards
       ? "Your request is in. Finish paying from My purchases."
       : "Your request is in. This seller doesn't take card payments yet: agree on payment in Messages, and never pay outside Geerho with gift cards, wire transfers, or crypto."),
       el("a", { class: "button secondary", href: "account.html#purchases" }, "See My Purchases")));

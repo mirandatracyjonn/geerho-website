@@ -84,10 +84,14 @@ export async function rentPanel(listing) {
     el("div", { class: "area-actions" }, where), el("div", { class: "area-search" }, city, find), status);
 
   async function showForm() {
-    const [{ data: booked }, { data: cards }] = await Promise.all([
+    const [{ data: booked }, { data: cards }, { data: cap }] = await Promise.all([
       supabase.rpc("rental_booked_dates", { listing: listing.id }),
       supabase.rpc("accepts_card_payments", { seller: listing.seller_id }),
+      supabase.rpc("in_app_payment_cap", { currency: listing.currency }),   // M189: rent above it is paid to the owner directly
     ]);
+    const capCents = cap ?? (listing.currency === "PHP" ? 15000000 : 250000);
+    let rentNow = 0;
+    const capLine = el("p", { class: "form-hint", hidden: true }, `Rent over ${money(capCents, listing.currency)} isn't paid in the app: pay the owner directly once they accept. Geerho's buyer protection and refunds don't cover payments made outside Geerho. Never pay with gift cards or wire transfers.`);
     const today = new Date();
     const tomorrow = new Date(Date.now() + 86400000);
     const from = el("input", { type: "date", min: isoDay(today), value: isoDay(today), "aria-label": "Pickup" });
@@ -110,6 +114,8 @@ export async function rentPanel(listing) {
       problemLine.textContent = problem ?? "";
       problemLine.hidden = !problem;
       const total = days > 0 ? rent(days, daily, weekly) : 0;
+      rentNow = total;
+      capLine.hidden = !(total > capCents);
       summary.replaceChildren(
         el("div", {}, el("span", {}, `${Math.max(days, 0)} ${days === 1 ? "day" : "days"}`), el("strong", {}, money(total, c))),
         deposit ? el("div", {}, el("span", {}, "Refundable deposit"), el("strong", {}, money(deposit, c))) : null,
@@ -137,7 +143,7 @@ export async function rentPanel(listing) {
         error.hidden = false;
         return;
       }
-      if (cards) {
+      if (cards && rentNow <= capCents) {
         const { data: session } = await supabase.functions.invoke("payments", { body: { action: "checkout", rental_id: bookingId, from: "web" } });
         if (session?.url) { location.href = session.url; return; }
       }
@@ -156,7 +162,7 @@ export async function rentPanel(listing) {
           : "Pay securely by card, Apple Pay or Google Pay with Stripe: rent plus the refundable deposit. You're charged only if the owner accepts.")
           + " Geerho pays the owner the rent at pickup and returns your deposit after the return, minus any late fees."
         : "Geerho doesn't collect rent or hold deposits for this owner. Pay the owner as you agree, never with gift cards or wire transfers."),
-      send, error);
+      capLine, send, error);
     update();
   }
   return panel(el("h3", { class: "request-title" }, "Request to Rent"), box);

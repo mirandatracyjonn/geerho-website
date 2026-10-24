@@ -33,7 +33,7 @@ const EDIT_COLUMNS = "id, kind, listing_format, status, category_id, title, desc
 // --- Elite teams (M46): a team member's new posts belong to the Elite; the server records who posted them. -------------
 
 /** What members are told about plans and homes (M111), the same on iOS, Android, and the website. */
-const HOME_NEEDS_PLAN = "Listing a home for sale or for rent needs a Basic, Pro, or Elite plan. Free members keep posting items as before. "
+const HOME_NEEDS_PLAN = "Listing a home for sale or for rent needs a Basic, Pro, Business, or Elite plan. Free members keep posting items as before. "
   + "Your home is saved as a draft: choose a plan, then publish it from Profile → My Listings. Your plan continues until you cancel it.";
 
 let teamCache;
@@ -432,7 +432,7 @@ export async function postForm(root, typeKey, { editId = null, me }) {
       field(`How far you'll lend it (${metric() ? "km" : "miles"})`, radius)) : null,
     isHome ? section(typeKey === "home_rent" ? "Rent" : "Price", field(typeKey === "home_rent" ? "Monthly rent" : "Asking price", price),
       el("div", { class: "form-row" }, el("span", { class: "form-label" }, "You are the"), role, roleHint,
-        el("small", { class: "form-hint" }, "Listing a home needs Basic, Pro, or Elite (Profile → Plan). Without one, you can save your home as a draft and publish it after you choose a plan.")),
+        el("small", { class: "form-hint" }, "Listing a home needs Basic, Pro, Business, or Elite (Profile → Plan). Without one, you can save your home as a draft and publish it after you choose a plan.")),
       el("div", { class: "two-col" }, field("Bedrooms", bedrooms), field("Bathrooms", bathrooms)),
       field(`Floor area (${metric() ? "m²" : "sq ft"})`, floor),
       typeKey === "home_rent" ? [field("Security deposit (optional)", securityDeposit), field("Lease length (months)", lease)] : null) : null,

@@ -214,7 +214,7 @@ async function sales(ctx) {
       : shipping ? [`Shipped · ${CARRIERS[s.carrier] ?? ""} ${s.tracking_number}`, "info"] : ["Sold · local pickup", "info"];
     const parts = [itemRow(`listing.html?id=${s.listing_id}`, cover(s.listing?.listing_photos), s.listing_title,
       [money(s.price_cents + (s.shipping_fee_cents ?? 0), s.currency), s.reference, shortDate(s.created_at),
-        s.seller_id !== ctx.me.id ? "For your Elite (paid to them)" : null].filter(Boolean).join(" · "), state, tone)];
+        s.seller_id !== ctx.me.id ? "For your team (paid to the team owner)" : null].filter(Boolean).join(" · "), state, tone)];
     if (shipping && !s.tracking_number) {
       const carrier = carrierPicker(s.listing?.country, s.listing?.shipping_carriers);
       if (s.carrier) carrier.value = s.carrier;
@@ -777,22 +777,22 @@ async function team(ctx) {
     actionsBar(button("Join", confirmThen(ctx, `Join ${name(t)}'s team?`, "You can help with their listings and chats.", "Join", () => supabase.rpc("respond_team_invite", { elite: t.elite_id, accept: true }))),
       button("Decline", confirmThen(ctx, "Decline the invitation?", "They're told.", "Decline", () => supabase.rpc("respond_team_invite", { elite: t.elite_id, accept: false })), "secondary")))), "Invitations"));
   if (joined.length) out.push(group(joined.map((t) => el("div", { class: "item" },
-    el("div", { class: "item-row" }, avatar(t.avatar_url, name(t), 44), el("span", { class: "row-title" }, el("strong", {}, name(t)), el("small", {}, t.is_elite ? "You're on their team. Your new posts can be theirs (Post → Post for …)." : "Their Elite plan has ended, so posting for them is paused."))),
+    el("div", { class: "item-row" }, avatar(t.avatar_url, name(t), 44), el("span", { class: "row-title" }, el("strong", {}, name(t)), el("small", {}, t.is_elite ? "You're on their team. Your new posts can be theirs (Post → Post for …)." : "Their Business or Elite plan has ended, so posting for them is paused."))),
     actionsBar(button("Leave Team", confirmThen(ctx, "Leave this team?", "You stop helping with their listings and chats.", "Leave", () => supabase.rpc("remove_team_member", { elite: t.elite_id, member: ctx.me.id }), { danger: true }), "secondary")))), "Teams you're on"));
   const { data: plan } = await supabase.from("member_plans").select("plan, status").eq("user_id", ctx.me.id).maybeSingle();
-  if (plan?.plan === "elite" && plan.status === "active") {
+  if ((plan?.plan === "elite" || plan?.plan === "business") && plan.status === "active") {
     const input = el("input", { type: "text", placeholder: "@username", "aria-label": "Username to invite", autocapitalize: "none", spellcheck: "false" });
     out.push(group([el("div", { class: "cell-pad form-grid" }, input, button("Invite", async () => {
       const { error } = await supabase.rpc("invite_team_member", { username: input.value.trim().replace(/^@/, "").toLowerCase() });
       if (error) return ctx.fail(friendlyError(error));
       ctx.reload();
-    }))], "Invite a team member", "Elite members can add team members to post and answer chats for their business."));
+    }))], "Invite a team member", `Add up to ${plan.plan === "business" ? 10 : 100} team members to post and answer chats for your business.`));
     out.push(group((members ?? []).map((m) => el("div", { class: "item" },
       el("div", { class: "item-row" }, avatar(m.avatar_url, name(m), 44), el("span", { class: "row-title" }, el("strong", {}, name(m)),
         el("small", {}, m.status === "invited" ? "Invited" : `${m.live_listings} live · ${m.sold_listings} sold · ${m.chats} chats`))),
       actionsBar(button("Remove", confirmThen(ctx, `Remove ${name(m)}?`, "They stop helping with your listings and chats.", "Remove", () => supabase.rpc("remove_team_member", { elite: ctx.me.id, member: m.member_id }), { danger: true }), "secondary")))), "Your team"));
   } else if (!out.length) {
-    out.push(empty("team", "Teams are part of Elite", "With the Elite plan, team members can post and answer chats for your business."), el("p", { style: "text-align:center" }, el("a", { class: "button", href: "plans.html" }, "See Plans")));
+    out.push(empty("team", "Teams come with Business and Elite", "With Business (10 seats) or Elite (100 seats), team members can post and answer chats for your business."), el("p", { style: "text-align:center" }, el("a", { class: "button", href: "plans.html" }, "See Plans")));
   }
   return out;
 }
