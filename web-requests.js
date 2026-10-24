@@ -153,7 +153,7 @@ export async function rentPanel(listing) {
       el("label", { class: "check-row" }, agree, agreeText),
       el("p", { class: "form-hint" }, cards
         ? (c === "PHP" ? "Pay securely with GCash, Maya, a card, or QR Ph through PayMongo: rent plus the refundable deposit. If the owner doesn't accept, you're refunded in full."
-          : "Pay securely by card with Stripe: rent plus the refundable deposit. You're charged only if the owner accepts.")
+          : "Pay securely by card, Apple Pay or Google Pay with Stripe: rent plus the refundable deposit. You're charged only if the owner accepts.")
           + " Geerho pays the owner the rent at pickup and returns your deposit after the return, minus any late fees."
         : "Geerho doesn't collect rent or hold deposits for this owner. Pay the owner as you agree, never with gift cards or wire transfers."),
       send, error);

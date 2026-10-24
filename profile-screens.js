@@ -5,7 +5,7 @@ import { el, money, photoURL } from "./site.js";
 import { friendlyError, supabase } from "./auth.js";
 import { icon, rowIcon } from "./icons.js";
 import { avatar, inviteFriends, screenHead } from "./profile.js";
-import { confirmDialog, reviewDialog, textDialog } from "./ui-dialog.js";
+import { confirmDialog, reviewDialog, signatureDialog, textDialog } from "./ui-dialog.js";
 
 const CARRIERS = { usps: "USPS", ups: "UPS", fedex: "FedEx", dhl: "DHL", lbc: "LBC", jnt: "J&T Express", ninjavan: "Ninja Van",
   flash: "Flash Express", phlpost: "PHLPost", lalamove: "Lalamove" };
@@ -487,6 +487,20 @@ async function addRentalPhotos(ctx, booking, stage, files) {
   ctx.reload();
 }
 
+// M174: an optional signature (drawn, with the typed full name) at pickup or return.
+async function signRental(ctx, booking, stage) {
+  const result = await signatureDialog(stage === "pickup" ? "Sign for Pickup" : "Sign for Return",
+    stage === "pickup" ? "By signing, you agree the item was handed over in the condition shown in the photos."
+                       : "By signing, you agree the item came back in the condition shown in the photos.");
+  if (!result?.png) return;
+  const path = `${ctx.me.id}/${booking.id}/${stage}-signature-${crypto.randomUUID().slice(0, 8)}.png`;
+  const { error } = await supabase.storage.from("rental-photos").upload(path, result.png, { contentType: "image/png" });
+  if (error) return ctx.fail("The signature couldn't be uploaded. Check your connection and try again.");
+  const { error: e } = await supabase.rpc("add_rental_signature", { booking: booking.id, stage, path, signed_name: result.name });
+  if (e) return ctx.fail(friendlyError(e));
+  ctx.reload();
+}
+
 /** Resizes a photo to at most 1600 px on the long side, as a JPEG (like the apps). */
 async function shrinkJPEG(file) {
   const bitmap = await createImageBitmap(file);
@@ -519,7 +533,7 @@ async function rentals(ctx) {
   const ids = shown.map((b) => b.id);
   const [{ data: pays }, { data: photos }, { data: reviews }] = ids.length ? await Promise.all([
     supabase.from("payments").select("rental_booking_id, status").in("rental_booking_id", ids),
-    supabase.from("rental_photos").select("booking_id, stage, storage_path").in("booking_id", ids),
+    supabase.from("rental_photos").select("booking_id, stage, storage_path, kind, signed_name").in("booking_id", ids),
     supabase.from("reviews").select("rental_booking_id").eq("reviewer_id", me).in("rental_booking_id", ids),
   ]) : [{ data: [] }, { data: [] }, { data: [] }];
   const payFor = Object.fromEntries((pays ?? []).map((p) => [p.rental_booking_id, p.status]));
@@ -530,8 +544,9 @@ async function rentals(ctx) {
     const [state, tone] = rentalStatus(b, owner);
     const pay = payFor[b.id];
     const pics = (photos ?? []).filter((p) => p.booking_id === b.id);
-    const pickupCount = pics.filter((p) => p.stage === "pickup").length;
-    const returnCount = pics.filter((p) => p.stage === "return").length;
+    const pickupCount = pics.filter((p) => p.stage === "pickup" && p.kind !== "signature").length;
+    const returnCount = pics.filter((p) => p.stage === "return" && p.kind !== "signature").length;
+    const signed = pics.filter((p) => p.kind === "signature").map((p) => `${p.stage === "pickup" ? "Pickup" : "Return"} signed by ${p.signed_name ?? "member"}`);
     const call = (name) => () => supabase.rpc(name, { booking: b.id });
     return el("div", { class: "item" },
       itemRow(`listing.html?id=${b.listing_id}`, null, b.listing_title,
@@ -540,6 +555,7 @@ async function rentals(ctx) {
       b.late_fees > 0 ? el("p", { class: "state bad" }, `Late fees so far: ${money(b.late_fees, b.currency)} (${money(b.late_fee_cents, b.currency)} a day)`) : null,
       pay && RENTAL_PAYMENT(pay, owner) ? el("p", { class: "hint" }, RENTAL_PAYMENT(pay, owner)) : null,
       ["accepted", "picked_up", "returned", "kept"].includes(status) ? el("p", { class: "hint" }, `Pickup photos: ${pickupCount} · Return photos: ${returnCount}`) : null,
+      signed.length ? el("p", { class: "hint" }, `✍️ ${signed.join(" · ")}`) : null,
       owner && status === "accepted" ? el("p", { class: "hint" }, "At handover, add pickup photos, then confirm.") : null,
       owner && status === "picked_up" ? el("p", { class: "hint" }, "When it's back, add return photos, then confirm.") : null,
       actionsBar(
@@ -547,8 +563,10 @@ async function rentals(ctx) {
         owner && status === "requested" ? button("Accept Request", confirmThen(ctx, "Accept this rental?", "The dates are booked for them.", "Yes", () => supabase.rpc("respond_to_rental", { booking: b.id, accept: true }))) : null,
         owner && status === "requested" ? button("Decline", confirmThen(ctx, "Decline this rental request?", "They're told right away.", "Yes", () => supabase.rpc("respond_to_rental", { booking: b.id, accept: false }), { danger: true }), "secondary") : null,
         status === "accepted" ? photoPicker("Add Pickup Photos", (files) => addRentalPhotos(ctx, b, "pickup", files)) : null,
+        ["accepted", "picked_up"].includes(status) ? button("Sign for Pickup", () => signRental(ctx, b, "pickup"), "secondary") : null,
         owner && status === "accepted" && pickupCount ? button("Confirm Pickup", confirmThen(ctx, "Confirm the renter picked it up?", "The rent goes to you.", "Yes", call("confirm_rental_pickup"))) : null,
         ["picked_up", "kept"].includes(status) ? photoPicker("Add Return Photos", (files) => addRentalPhotos(ctx, b, "return", files)) : null,
+        status === "picked_up" || (status === "kept" && owner) ? button("Sign for Return", () => signRental(ctx, b, "return"), "secondary") : null,
         owner && status === "picked_up" && returnCount ? button("Confirm Return", confirmThen(ctx, "Confirm it's back?", "The renter's deposit is settled.", "Yes", call("confirm_rental_return"))) : null,
         owner && status === "kept" && returnCount ? button("Accept Return Anyway", confirmThen(ctx, "Accept the return anyway?", "Have them pay what they owe first.", "Yes", call("accept_kept_rental_return")), "secondary") : null,
         ["returned", "kept"].includes(status) && !reviewed.has(b.id) ? button(owner ? "Review the Renter" : "Review the Owner", async () => {

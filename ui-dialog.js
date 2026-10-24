@@ -65,3 +65,28 @@ export async function textDialog(title, message, { okLabel = "Send", min = 10, p
   ok.addEventListener("click", () => { dialog.result = input.value.trim(); });
   return open(dialog);
 }
+
+/** M174: sign with a mouse or finger and type a full name. Resolves { png: Blob, name } or null. */
+export async function signatureDialog(title, message) {
+  const { ok, row } = buttons("Sign", { disabled: true });
+  const canvas = el("canvas", { width: 600, height: 220, class: "g-signature", "aria-label": "Sign here" });
+  const ctx = canvas.getContext("2d");
+  const reset = () => { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); drawn = false; check(); };
+  let drawing = false, drawn = false;
+  const name = el("input", { type: "text", maxlength: 120, autocomplete: "name", placeholder: "Your full name", "aria-label": "Your full name" });
+  const check = () => { ok.disabled = !drawn || name.value.trim().length < 2; };
+  const at = (e) => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) * canvas.width / r.width, (e.clientY - r.top) * canvas.height / r.height]; };
+  canvas.addEventListener("pointerdown", (e) => { drawing = true; canvas.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(...at(e)); });
+  canvas.addEventListener("pointermove", (e) => { if (!drawing) return; ctx.lineTo(...at(e)); ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke(); drawn = true; check(); });
+  canvas.addEventListener("pointerup", () => { drawing = false; });
+  name.addEventListener("input", check);
+  const clear = el("button", { type: "button", class: "link-button" }, "Clear");
+  clear.addEventListener("click", reset);
+  const { dialog } = shell(title, el("p", {}, message), canvas, clear, name, row);
+  reset();
+  ok.addEventListener("click", (e) => {
+    e.preventDefault();
+    canvas.toBlob((png) => { dialog.result = { png, name: name.value.trim() }; dialog.close("ok"); }, "image/png");
+  });
+  return open(dialog);
+}
