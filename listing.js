@@ -1,6 +1,6 @@
 // Listing page: one listing with photos, price, details, seller, and the address rules for homes.
 import { translateButton } from "./translate.js";
-import { CONDITIONS, areaText, el, featuredUntil, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
+import { SUPABASE_URL, CONDITIONS, areaText, el, featuredUntil, formatBadge, getAddress, getListing, getRatingSummary, money, photoURL, priceLine,
   propertyFacts, richText } from "./site.js";
 
 const PETS = { none: "No pets", cats: "Cats OK", dogs: "Dogs OK", cats_and_dogs: "Cats and dogs OK" };
@@ -205,6 +205,7 @@ async function render() {
       listing.listing_format !== "auction" && el("p", { class: "listing-price" }, priceLine(listing)),
       actions(listing),
       facts(listing, address),
+      modelLink(listing),
       el("h2", {}, "Description"),
       descriptionWithTranslate(listing),
       seller,
@@ -292,4 +293,17 @@ function descriptionWithTranslate(listing) {
   const wrap = el("div", {}, body);
   if (listing.description) wrap.append(translateButton(`${listing.title}\n\n${listing.description}`, body));
   return wrap;
+}
+
+// M175: a 3D model made on an iPhone (Object Capture). Safari on iPhone, iPad and Mac opens it in AR Quick Look
+// (rel="ar" needs an <img> inside); other browsers don't show the link.
+function modelLink(listing) {
+  if (!listing.model_path) return null;
+  const a = document.createElement("a");
+  if (!a.relList?.supports?.("ar")) return null;
+  const url = `${SUPABASE_URL}/storage/v1/object/public/listing-models/${listing.model_path}`;
+  const cover = (listing.listing_photos ?? []).sort((x, y) => x.position - y.position)[0];
+  return el("a", { rel: "ar", href: url, class: "button secondary model-link" },
+    cover ? el("img", { src: photoURL(cover.storage_path), alt: "", width: "1", height: "1", style: "width:1px;height:1px;opacity:0" }) : el("img", { alt: "", src: "favicon.png", style: "width:1px;height:1px;opacity:0" }),
+    "View in 3D and in your room");
 }

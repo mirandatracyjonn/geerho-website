@@ -45,7 +45,7 @@ export const LISTING_COLUMNS = [
   "seller_id", "kind", "lister_role", "bedrooms", "bathrooms", "floor_area_sqm", "lot_area_sqm", "year_built",
   "parking_spaces", "furnished", "pets", "laundry", "security_deposit_cents", "lease_months", "available_from",
   "utilities_included", "hoa_fee_cents", "country", "profession", "rate_type", "travel_radius_km", "remote_ok",
-  "years_experience", "needed_by", "listing_photos(storage_path,position,width,height)",
+  "years_experience", "needed_by", "model_path", "listing_photos(storage_path,position,width,height)",
 ].join(",");
 
 export async function getListing(id) {
