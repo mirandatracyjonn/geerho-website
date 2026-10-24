@@ -25,5 +25,10 @@
     "apps": [
       "P5G566MD9G.com.geerho.app"
     ]
+  },
+  "appclips": {
+    "apps": [
+      "P5G566MD9G.com.geerho.app.Clip"
+    ]
   }
 }
