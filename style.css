@@ -1187,3 +1187,8 @@ label.choice input { margin-top: 3px; }
 .page-tasks li.done label span { text-decoration: line-through; text-decoration-color: var(--good); }
 .page-why { color: var(--muted); font-size: 0.95rem; margin: 6px 0 0 28px !important; }
 .page-editor textarea { min-height: 320px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+
+/* M172 batch: suggested replies above the chat box. */
+.reply-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; grid-column: 1 / -1; }
+.reply-chips button { white-space: nowrap; border-radius: 999px; padding: 6px 12px; font-size: 0.9rem; }
+.reply-chips[hidden] { display: none; }

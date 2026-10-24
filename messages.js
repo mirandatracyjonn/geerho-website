@@ -241,7 +241,9 @@ async function loadThread(initial) {
       threadPicker.paint();
       loadConversations();
     } });
-    thread.replaceChildren(header, bar, messagesList, composer());
+    const lastReal = [...messages].reverse().find((m) => !m.is_system);
+    const replies = lastReal && lastReal.sender_id !== me.id && (lastReal.body ?? "").trim() ? basicReplies(lastReal.body, conversation.i_am_seller) : [];
+    thread.replaceChildren(header, bar, messagesList, composer(replies));
   }
   if (initial) await loadReactions(); else loadReactions();
   const bubbles = document.getElementById("bubbles");
@@ -259,13 +261,34 @@ async function loadThread(initial) {
   }
 }
 
-function composer() {
+// M172 batch (2026-10-23): tap-to-fill reply suggestions when the other person wrote last; the same ready-made list as
+// the apps (which also use on-device AI when the phone has it). Tapping one only fills the box.
+function basicReplies(last, iAmSeller) {
+  const t = String(last).toLowerCase();
+  const has = (...w) => w.some((x) => t.includes(x));
+  if (has("available", "still have", "still for sale", "is this sold"))
+    return iAmSeller ? ["Yes, it's still available!", "Sorry, it's sold.", "Yes! When would you like to pick it up?"] : ["Great, I'll take it!", "Can I see it today?", "Thanks for letting me know."];
+  if (has("lowest", "best price", "discount", "negotiable", "last price", "offer"))
+    return iAmSeller ? ["The price is firm, sorry.", "Make me an offer in the app.", "I can go a little lower. What's your offer?"] : ["Would you take a bit less?", "I'll make an offer in the app.", "OK, that works for me."];
+  if (has("where", "meet", "pick up", "pickup", "location")) return ["Can we meet somewhere public?", "What time works for you?", "I can ship it too."];
+  if (has("when", "what time", "today", "tomorrow")) return ["Today works for me.", "Tomorrow works for me.", "What time is good for you?"];
+  if (has("ship", "shipping", "deliver"))
+    return iAmSeller ? ["Yes, I can ship it.", "Shipping is shown on the listing.", "Pickup only, sorry."] : ["Please ship it.", "How much is shipping?", "I'll pick it up instead."];
+  if (has("thank", "salamat")) return ["You're welcome!", "Thanks to you too!", "Anytime!"];
+  if (has("?")) return ["Yes.", "No, sorry.", "Let me check and get back to you."];
+  return ["OK!", "Thanks!", "Sounds good."];
+}
+
+function composer(replies = []) {
   const textarea = el("textarea", { id: "message-body", rows: "3", maxlength: "4000", "aria-label": "Message", placeholder: "Write a message" });
   const error = el("p", { class: "status bad", role: "alert", hidden: true });
   const fileInput = el("input", { type: "file", class: "sr-only", id: "chat-file", accept: "image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" });
   const attach = el("label", { class: "button secondary composer-tool", for: "chat-file", title: "Send a photo, video, voice message, or file" }, "📎 Attach");
   const locate = el("button", { type: "button", class: "secondary composer-tool", title: "Share your location" }, "📍 Location");
-  const form = el("form", { class: "composer" }, textarea, el("div", { class: "composer-tools" }, attach, fileInput, locate), el("button", { type: "submit" }, "Send"), error);
+  const chips = el("div", { class: "reply-chips", role: "group", "aria-label": "Suggested replies", hidden: replies.length === 0 },
+    ...replies.map((r) => { const b = el("button", { type: "button", class: "secondary" }, r); b.addEventListener("click", () => { textarea.value = r; textarea.focus(); chips.hidden = true; }); return b; }));
+  textarea.addEventListener("input", () => { chips.hidden = textarea.value.length > 0 || replies.length === 0; });
+  const form = el("form", { class: "composer" }, chips, textarea, el("div", { class: "composer-tools" }, attach, fileInput, locate), el("button", { type: "submit" }, "Send"), error);
   const showError = (problem) => {
     error.textContent = /verif/i.test(problem?.message ?? "") ? "Verify your identity to send messages. Go to Profile → Settings → Identity Verification to start." : (typeof problem === "string" ? problem : friendlyError(problem));
     error.hidden = false;
