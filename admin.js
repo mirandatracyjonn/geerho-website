@@ -2289,7 +2289,7 @@ async function taxHelper() {
 // --- M203 Tax Forms (TJ, 2026-10-24), like the apps: every Super Admin picks a form and opens it filled from the
 // Company Books; the tax-forms function fetches the official PDF and checks it's the version Tax Helper knows. Super
 // Admin 1 edits the business details. Never fills an SSN.
-const taxFormsState = { year: new Date().getFullYear() - 1, selected: null };
+const taxFormsState = { year: Math.max(2026, new Date().getFullYear() - 1), selected: null };   // the LLC's first tax year is 2026
 const TAX_FORM_STATUS = { ready: "Ready", draft: "Draft (this year's form isn't out yet)", needs_update: "New version: needs a check", unavailable: "Can't reach the form's website" };
 
 async function taxForms() {

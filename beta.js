@@ -11,7 +11,9 @@ const when = (iso) => new Date(iso).toLocaleString(undefined, { month: "short", 
 const STATUS = { done: ["Done", "good"], problem: ["Problem", "bad"], blocked: ["Blocked", "warn"] };
 const PLATFORM = { iphone: "iPhone", android: "Android", web: "Web" };
 const guessPlatform = () => (/iPhone|iPad/.test(navigator.userAgent) ? "iphone" : /Android/.test(navigator.userAgent) ? "android" : "web");
-let state = { tab: new URLSearchParams(location.search).get("tab") === "admin" ? "admin" : "tasks", filter: "review" };
+// M206: beta.html#result-<id> (from a notification) opens Testers & Check-offs at that check-off.
+const linkedResult = (location.hash.match(/^#result-([0-9a-f-]{36})$/) ?? [])[1] ?? null;
+let state = { tab: new URLSearchParams(location.search).get("tab") === "admin" || linkedResult ? "admin" : "tasks", filter: linkedResult ? "all" : "review" };
 
 // --- Small helpers -------------------------------------------------------------------------------------------------
 
@@ -206,7 +208,7 @@ async function adminView(container, page, me, reload) {
     const reopen = el("button", { type: "button", class: "secondary" }, "Reopen");
     confirm.addEventListener("click", () => review("confirmed"));
     reopen.addEventListener("click", () => review("reopened"));
-    return el("div", { class: "beta-result" },
+    return el("div", { class: "beta-result" + (r.id === linkedResult ? " linked" : ""), id: `result-${r.id}` },
       el("div", {}, el("span", { class: `beta-chip ${tone}` }, label), " ", el("strong", {}, `@${r.username}`), ` · Role ${r.role_code} · ${when(r.submitted_at)}`,
         r.platform ? ` · ${PLATFORM[r.platform]}` : "", r.build ? ` · build ${r.build}` : ""),
       el("p", { class: "beta-result-step" }, r.step),
@@ -232,6 +234,7 @@ async function adminView(container, page, me, reload) {
     el("div", { class: "group plain" }, el("div", { class: "cell-pad form-grid" }, el("div", { class: "area-search" }, add, addButton), addError,
       el("small", { class: "form-hint" }, "Testers get the silver Beta Tester star. They must verify their identity before checking off tasks."))),
     testers);
+  if (linkedResult) document.getElementById(`result-${linkedResult}`)?.scrollIntoView({ block: "center" });
 }
 
 function alertBox(text) { import("./ui-dialog.js").then(({ confirmDialog }) => confirmDialog("Something went wrong", text, "OK")); }

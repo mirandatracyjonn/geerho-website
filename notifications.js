@@ -36,7 +36,9 @@ function linkFor(item) {
     case "security": return "account.html#security";
     case "moderator_handbook": return "admin.html#handbook";
     case "profile": return `member.html?id=${encodeURIComponent(item.target_id)}`;
-    case "beta": return "beta.html";
+    // M206: a check-off opens beta.html at that report; an AI beta report opens its page.
+    case "beta": return item.target_id ? `beta.html#result-${encodeURIComponent(item.target_id)}` : "beta.html";
+    case "shared_page": return item.target_id ? `admin.html#pages/${encodeURIComponent(item.target_id)}` : "admin.html#pages";
     // Anything else: the full message is already shown here; Geerho Support notices open Support.
     default: return item.kind === "support" ? "contact.html" : null;
   }
