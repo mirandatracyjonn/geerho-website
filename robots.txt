@@ -1,0 +1,5 @@
+# geerho.com (2026-10-24)
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Sitemap: https://geerho.com/sitemap.xml

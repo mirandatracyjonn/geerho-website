@@ -206,6 +206,7 @@ async function render() {
       actions(listing),
       facts(listing, address),
       modelLink(listing),
+      schemaData(listing),
       el("h2", {}, "Description"),
       descriptionWithTranslate(listing),
       seller,
@@ -306,4 +307,29 @@ function modelLink(listing) {
   return el("a", { rel: "ar", href: url, class: "button secondary model-link" },
     cover ? el("img", { src: photoURL(cover.storage_path), alt: "", width: "1", height: "1", style: "width:1px;height:1px;opacity:0" }) : el("img", { alt: "", src: "favicon.png", style: "width:1px;height:1px;opacity:0" }),
     "View in 3D and in your room");
+}
+
+// schema.org data for Google (2026-10-24 audit), the same as the share pages: items as Product + Offer, homes as
+// RealEstateListing. A JSON-LD block isn't run as a script, so the page's script rules allow it.
+function schemaData(listing) {
+  const cover = (listing.listing_photos ?? []).sort((x, y) => x.position - y.position)[0];
+  const image = cover ? photoURL(cover.storage_path) : "https://geerho.com/app-icon.png";
+  const url = `https://geerho.com/listing.html?id=${listing.id}`;
+  const price = (listing.price_cents / 100).toFixed(2);
+  const desc = String(listing.description ?? "").slice(0, 500);
+  const conditions = { new: "NewCondition", like_new: "UsedCondition", good: "UsedCondition", fair: "UsedCondition", for_parts: "DamagedCondition" };
+  let data = null;
+  if (listing.kind === "item") {
+    const offer = { "@type": "Offer", price, priceCurrency: listing.currency, url, availability: "https://schema.org/InStock" };
+    if (conditions[listing.condition]) offer.itemCondition = `https://schema.org/${conditions[listing.condition]}`;
+    data = { "@context": "https://schema.org", "@type": "Product", name: listing.title, description: desc, image: [image], offers: offer };
+  } else if (listing.kind === "rental" || listing.kind === "property_sale") {
+    data = { "@context": "https://schema.org", "@type": "RealEstateListing", name: listing.title, description: desc, url, image: [image],
+             offers: { "@type": "Offer", price, priceCurrency: listing.currency } };
+  }
+  if (!data) return null;
+  const script = document.createElement("script");
+  script.type = "application/ld+json";
+  script.textContent = JSON.stringify(data);
+  return script;
 }
