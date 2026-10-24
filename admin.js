@@ -2188,35 +2188,46 @@ async function taxHelper() {
       catch (e) { fail(e); }
     });
     const tDate = el("input", { type: "date", value: ymd(new Date()), "aria-label": "Date" });
-    const tMiles = el("input", { type: "number", step: "0.1", min: "0.1", placeholder: "Round-trip miles", "aria-label": "Miles" });
+    const last = (d.trips ?? [])[0];
+    const tOdoStart = el("input", { type: "number", min: "0", placeholder: "Odometer before driving", "aria-label": "Odometer before driving" });
+    const tOdoEnd = el("input", { type: "number", min: "0", placeholder: "Odometer after driving", "aria-label": "Odometer after driving" });
+    const tMiles = el("input", { type: "number", step: "0.1", min: "0.1", placeholder: "Or just the miles", "aria-label": "Miles" });
     const tPurpose = el("input", { placeholder: "Business reason", maxlength: "200", "aria-label": "Business reason" });
     const tWith = el("input", { placeholder: "Who you met (optional)", maxlength: "120", "aria-label": "Who you met" });
     const tFrom = el("input", { placeholder: "From (optional)", maxlength: "120", "aria-label": "From" });
     const tTo = el("input", { placeholder: "To (optional)", maxlength: "120", "aria-label": "To" });
+    const odo = () => { const a = parseInt(tOdoStart.value, 10), b = parseInt(tOdoEnd.value, 10); return a >= 0 && b > a ? [a, b] : null; };
     const addTrip = button("Log trip", () => {
-      if (!(parseFloat(tMiles.value) > 0) || !tPurpose.value.trim()) { fail(new Error("Enter the miles and the business reason.")); return; }
-      run("tax_save_trip", { trip: null, driven_on: tDate.value, miles: parseFloat(tMiles.value), purpose: tPurpose.value.trim(), met_with: tWith.value.trim() || null,
-        from_place: tFrom.value.trim() || null, to_place: tTo.value.trim() || null, vehicle: "Car" });
+      const o = odo();
+      if ((!o && !(parseFloat(tMiles.value) > 0)) || !tPurpose.value.trim()) { fail(new Error("Enter the odometer before and after (or the miles) and the business reason.")); return; }
+      run("tax_save_trip", { trip: null, driven_on: tDate.value, miles: o ? null : parseFloat(tMiles.value), purpose: tPurpose.value.trim(), met_with: tWith.value.trim() || null,
+        from_place: tFrom.value.trim() || null, to_place: tTo.value.trim() || null, vehicle: "Car", odometer_start: o?.[0] ?? null, odometer_end: o?.[1] ?? null });
     });
+    // M197: the trip back home starts where the last trip ended.
+    const backBtn = last ? button(`Fill in the trip back from ${last.to_place ?? "there"}`, () => {
+      tPurpose.value = `Back from ${last.to_place ?? last.purpose}`; tFrom.value = last.to_place ?? ""; tTo.value = last.from_place ?? "Home"; tWith.value = "";
+      tOdoStart.value = last.odometer_end ?? ""; tOdoEnd.value = ""; tOdoEnd.focus();
+    }, "button secondary") : null;
     const rDate = el("input", { type: "date", value: `${new Date().getFullYear() + 1}-01-01`, "aria-label": "Starts" });
     const rCents = el("input", { type: "number", step: "0.5", min: "0", placeholder: "Cents a mile, e.g. 72.5", "aria-label": "Cents a mile" });
     const addRate = button("Add rate", () => { if (!(parseFloat(rCents.value) > 0)) { fail(new Error("Enter the rate.")); return; } run("tax_save_mileage_rate", { effective_on: rDate.value, cents: parseFloat(rCents.value) }); }, "button secondary");
     body = [groupTitle("This year"), group(
-        kv("Odometer, start of year", c.odometer_start != null ? `${Number(c.odometer_start).toLocaleString()} mi` : "Add a Jan 1 reading"),
-        kv("Odometer, end of year", c.odometer_end != null ? `${Number(c.odometer_end).toLocaleString()} mi` : "Add a Dec 31 reading"),
+        kv(c.odometer_estimated ? "Odometer, first logged" : "Odometer, start of year", c.odometer_start != null ? `${Number(c.odometer_start).toLocaleString()} mi` : "Add a Jan 1 reading"),
+        kv(c.odometer_estimated ? "Odometer, last logged" : "Odometer, end of year", c.odometer_end != null ? `${Number(c.odometer_end).toLocaleString()} mi` : "Add a Dec 31 reading"),
         kv("Business miles", `${Number(c.business_miles).toLocaleString()} mi`), c.business_pct != null ? kv("Business share", `${c.business_pct}%`) : null,
         kv("Standard mileage", usd(c.standard_cents)), kv("Actual car costs (Car category)", usd(c.actual_costs_cents)),
         c.actual_business_cents != null ? kv("Actual, business share", usd(c.actual_business_cents)) : null),
       hint("Standard mileage is usually better (the CPA said the same). To compare, record gas, insurance, repairs and registration as Car expenses in Company Books."),
-      groupTitle("Add an odometer reading"), el("div", { class: "form-stack" }, odoDate, odoCar, odoMiles, el("label", {}, "Photo of the odometer (optional)", odoFile), addOdo),
+      groupTitle("Start and end of the year"), el("div", { class: "form-stack" }, odoDate, odoCar, odoMiles, el("label", {}, "Photo (optional)", odoFile), addOdo),
       (d.odometer ?? []).length ? group(...d.odometer.map((o) => el("li", { class: "kv" }, el("span", { class: "kv-label" }, `${dayText(o.read_on)} · ${o.vehicle}`),
         el("span", { class: "kv-value" }, `${Number(o.miles).toLocaleString()} mi `, o.photo_path ? booksFileButton(o.photo_path, "Photo") : null, " ", del("tax_delete_odometer", "reading", o.id))))) : null,
-      hint("A photo of the odometer every January 1 (the calendar reminds you)."),
-      groupTitle("Log a business trip"), el("div", { class: "form-stack" }, tDate, tMiles, tPurpose, tWith, tFrom, tTo, addTrip),
+      hint("Write down the odometer around January 1 (no photo needed). The IRS asks for the car's total miles for the year; your trips give the business miles."),
+      groupTitle("Log a business trip"), backBtn, el("div", { class: "form-stack" }, tDate, tOdoStart, tOdoEnd, tMiles, tPurpose, tWith, tFrom, tTo, addTrip),
       (d.trips ?? []).length ? group(...d.trips.map((t) => el("li", { class: "kv" },
-        el("span", { class: "kv-label" }, `${t.purpose} · ${[dayText(t.driven_on), t.met_with ? `with ${t.met_with}` : null, [t.from_place, t.to_place].filter(Boolean).join(" → ") || null, `${t.rate_cents}¢/mi`].filter(Boolean).join(" · ")}`),
+        el("span", { class: "kv-label" }, `${t.purpose} · ${[dayText(t.driven_on), t.met_with ? `with ${t.met_with}` : null, [t.from_place, t.to_place].filter(Boolean).join(" → ") || null,
+          t.odometer_start != null && t.odometer_end != null ? `odometer ${Number(t.odometer_start).toLocaleString()}–${Number(t.odometer_end).toLocaleString()}` : null, `${t.rate_cents}¢/mi`].filter(Boolean).join(" · ")}`),
         el("span", { class: "kv-value" }, `${t.miles} mi `, del("books_delete_trip", "trip", t.id))))) : hint("No trips this year."),
-      hint("Round-trip miles, the business reason, and who you met. Commuting doesn't count."),
+      hint("Log the odometer before and after each drive: one trip there, then the trip back home. Add the business reason and who you met. Commuting doesn't count."),
       groupTitle("IRS standard mileage rates"), group(...(d.mileage_rates ?? []).map((r) => kv(`From ${dayText(r.effective_on)}`, `${r.cents}¢ a mile`))),
       el("div", { class: "form-stack" }, rDate, rCents, addRate),
       hint("Each trip uses the rate of its day. 2026: 72.5¢, and 76¢ from July 1 (IRS Announcement 2026-11).")];
