@@ -103,13 +103,32 @@
       iPhone, Google's on-device translator on Android, your browser's built-in translator on geerho.com where it has one);
       Geerho doesn't receive it. Android downloads a language pack from Google the first time. In browsers without a
       built-in translator, Translate opens Google Translate with that text, and Google's privacy policy applies to it.</li>
+    <li><strong>Scanning and suggestions on your phone.</strong> Scanning a barcode, a shipping label or a document,
+      suggesting a category from your first photo, suggesting chat replies, and Visual Intelligence searches on iPhone all
+      run on your phone (Apple's VisionKit, Vision and Apple Intelligence on iPhone; Google's on-device ML Kit and Smart
+      Reply on Android). Geerho doesn't receive the camera picture or your chat for these. Only the result is used: a
+      scanned document becomes an attachment you send, a suggested reply goes in the box for you to send or not, and for
+      Visual Intelligence only a few words describing the picture are used to search listings.</li>
+    <li><strong>Product lookups.</strong> When you scan a product's barcode to start a listing, the app sends just the
+      barcode number (not your name, location or photos) to UPCitemdb, a product database, to suggest a title. Their
+      privacy policy applies to that lookup.</li>
+    <li><strong>Floor plans and 3D models (iPhone).</strong> A floor plan made from a room scan is drawn on your phone and
+      added to your listing as a photo. A 3D model of an item is built on your phone from the pictures you take and, if
+      you add it, is published with your listing like its photos. The camera images used to make them stay on your phone.</li>
+    <li><strong>Message notifications.</strong> If you allow message previews, a message notification carries the
+      sender's name and profile photo link so your phone can show who wrote; replying from the notification sends the
+      message like any other. With previews off, neither is included.</li>
     <li><strong>Wallet card.</strong> If you add your Geerho card to Apple Wallet or Google Wallet, it holds your name,
       @username, verification status, Founding Member status, when you joined, and a QR code of your public profile.
       Apple keeps it on your device; for Google Wallet, Geerho sends those details to Google, which stores the card in
       your Google account. Remove it in Wallet any time.</li>
     <li><strong>Widgets and countdowns.</strong> If you add the Geerho widget, your unread-message count and number of live
       listings are kept on your phone for it (cleared when you sign out). An auction countdown on your Lock Screen or in a
-      notification is made on your phone after you bid.</li>
+      notification is made on your phone after you bid. Reminders for today's rental pickup or return and for a home tour
+      in the next 8 hours are made on your phone from your own bookings when you open the app.</li>
+    <li><strong>App Clip and Handoff (Apple devices).</strong> The Geerho App Clip shows a shared listing's public details
+      without signing in or installing the app. Handoff lets you continue a listing or chat you have open on another of
+      your Apple devices; Apple passes only the page link between your devices.</li>
     <li><strong>iPhone search and shortcuts.</strong> Your own listings and listings you open can appear in your phone's
       search (Spotlight on iPhone) and app shortcuts (Android). This is stored on your phone only and cleared when you
       sign out.</li>
@@ -195,8 +214,9 @@
       and any photos, screenshots, voice recordings, files, or links you attach. Voice recordings are made only when you
       tap record.</li>
     <li><strong>Rentals.</strong> Rental requests and bookings (dates, rates, deposit, status, and your device’s time
-      zone, used for due dates and reminders) and the condition
-      photos you or the other person take at pickup and return. These are visible only to the owner, the renter, and
+      zone, used for due dates and reminders), the condition
+      photos you or the other person take at pickup and return, and any signatures (the drawn signature, your typed full
+      name and the time) either of you adds at those steps. These are visible only to the owner, the renter, and
       Geerho’s moderators, and are deleted when either account is deleted. When you request a rental, your approximate
       area is checked against the owner’s lending radius; it is not saved with the request.</li>
     <li><strong>Watched items.</strong> The listings you choose to watch, and alerts about them. Sellers and other users
@@ -281,7 +301,7 @@
       (identity verification), Stripe, Inc. and PayMongo Philippines, Inc. (payments, payouts, sales tax, and plan
       billing; they also use information to prevent fraud and meet their own legal obligations, under their own privacy
       policies), Anthropic, PBC (AI review of listings for our moderators, scam checks on chat messages that contain risk words, and summaries of reports for our moderators, answers to everyday support requests, and, without any personal information, a weekly report of overall totals and drafts of our own marketing; under its commercial terms it doesn't use this
-      content to train its models), Apple Inc. (push notifications), komoot GmbH (Photon map search, to find a listing’s area when you post on
+      content to train its models), Apple Inc. (push notifications), UPCitemdb (product names for scanned barcodes; only the barcode number), komoot GmbH (Photon map search, to find a listing’s area when you post on
       geerho.com), and the sign-in provider you choose (Google LLC, GitHub, Inc., or
       Apple Inc.).</li>
     <li><strong>For legal reasons,</strong> when we believe in good faith that disclosure is required by law or
