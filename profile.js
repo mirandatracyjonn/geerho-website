@@ -149,7 +149,7 @@ async function renderHub() {
   hub.replaceChildren(...[
     el("div", { class: "title-row" }, el("h1", { class: "large-title" }, "Profile"), settings),
     verified ? null : el("a", { class: "verify-card", href: "#verify" }, icon("seal"),
-      el("span", {}, el("strong", {}, "Verify your identity"), "Verify your identity to sell and message on Geerho.")),
+      el("span", {}, el("strong", {}, "Verify your identity"), "Verify your identity to sell and message on Geerho. It's free and takes about 2 minutes. Until then you can browse, save listings, watch prices, and set search alerts.")),
     card, followGroup, main, more].filter(Boolean));
 
   // Badges, like the app (Purchase Requests waiting, My Bids needing attention).

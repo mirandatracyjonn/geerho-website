@@ -1213,3 +1213,13 @@ label.choice input { margin-top: 3px; }
 /* M195 Tax Helper (admin.html#tax) */
 .actions-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0; }
 .good-text { color: var(--success, #34c759); font-weight: 600; }
+
+/* "Add Geerho to your Home Screen" tip (install-tip.js), above the phone tab bar */
+.install-tip {
+  position: fixed; z-index: 36; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px;
+  background: var(--bg); color: var(--text); border: 1px solid var(--rule); box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+}
+.install-tip p { margin: 0; flex: 1; font-size: 0.92rem; line-height: 1.35; }
+.install-tip div { display: flex; gap: 6px; flex-shrink: 0; }
+.install-tip .button { padding: 8px 12px; font-size: 0.9rem; }

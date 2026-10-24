@@ -155,3 +155,6 @@ function openLinkedAnswer() {
 }
 openLinkedAnswer();
 window.addEventListener("hashchange", openLinkedAnswer);
+
+// M198 batch (TJ, 2026-10-24): the "Add to Home Screen" tip on phones.
+import("./install-tip.js").catch(() => {});

@@ -150,7 +150,7 @@ export async function auctionPanel(listing) {
       : a.auction_state ? "This auction has ended." : "This auction hasn't started yet.");
     // The final 2 minutes (like eBay): a red banner with a big mm:ss timer, and the bids re-checked every 5 seconds.
     const finalClock = el("span", { class: "au-final-clock", role: "timer", "aria-live": "off" });
-    const final = el("div", { class: "au-final", hidden: true }, el("span", { class: "au-final-label" }, "Ending soon · bid now"), finalClock);
+    const final = el("div", { class: "au-final", hidden: true }, el("span", { class: "au-final-label" }, "Ending soon · bid now", el("small", { style: "display:block;font-weight:400" }, "A bid now adds 2 minutes")), finalClock);
     // Bid history (the app's sheet): bidders shown by their masked name; yours and the leading bid are marked.
     const history = bids ? el("details", { class: "au-history" }, el("summary", {}, `Bid history (${bids})`)) : null;
     history?.addEventListener("toggle", async () => {
