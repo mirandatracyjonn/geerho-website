@@ -74,12 +74,34 @@ for (const name of ["format", "category", "sort"]) {
 more.addEventListener("click", () => load(false));
 
 readURL();
-try {
-  const categories = await getCategories();
-  const selected = new URLSearchParams(location.search).get("category");
-  for (const category of categories.filter((c) => c.parent_id === null)) {
-    categorySelect.append(new Option(category.name, category.id, false, String(category.id) === selected));
+// Categories grouped by type (2026-10-24 audit: one flat list repeated "House" and every service under Jobs too). Once a
+// type is chosen, only its group shows.
+const GROUPS = [["item", "Items"], ["rental", "Homes for rent"], ["property_sale", "Homes for sale"], ["service", "Services"], ["job", "Jobs"]];
+const KIND_FOR_FORMAT = { fixed: "item", auction: "item", rental: "item", buy_now: "item", home_rent: "rental", home_sale: "property_sale",
+                          services: "service", jobs: "job" };
+let allCategories = [];
+function fillCategories() {
+  const selected = categorySelect.value || new URLSearchParams(location.search).get("category") || "";
+  const only = KIND_FOR_FORMAT[form.elements.format.value] ?? null;
+  categorySelect.replaceChildren(new Option("All categories", ""));
+  for (const [kind, label] of GROUPS) {
+    if (only && kind !== only) continue;
+    const list = allCategories.filter((c) => c.parent_id === null && (c.kind ?? "item") === kind);
+    if (!list.length) continue;
+    const group = document.createElement("optgroup");
+    group.label = label;
+    for (const c of list) group.append(new Option(c.name, c.id, false, String(c.id) === String(selected)));
+    categorySelect.append(group);
   }
+  if (categorySelect.value !== String(selected)) {
+    categorySelect.value = "";
+    if (selected) form.requestSubmit();   // the old category doesn't fit the new type: search again without it
+  }
+}
+try {
+  allCategories = await getCategories();
+  fillCategories();
+  form.elements.format.addEventListener("change", fillCategories);
 } catch {
   // The search still works without the category list.
 }
