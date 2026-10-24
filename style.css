@@ -1197,3 +1197,9 @@ label.choice input { margin-top: 3px; }
 
 /* M174: signature pad (always black on white). */
 .g-signature { width: 100%; height: auto; background: #fff; border: 1px solid var(--separator, #ccc); border-radius: 12px; touch-action: none; display: block; }
+
+/* Desktop: a QR code next to "Get the app", so people can jump to their phone (2026-10-24). */
+.cta-qr { display: none; margin: 0; text-align: center; }
+.cta-qr img { background: #fff; padding: 6px; border-radius: 12px; display: block; }
+.cta-qr figcaption { font-size: 0.75rem; margin-top: 4px; opacity: 0.85; }
+@media (min-width: 900px) and (hover: hover) { .cta-qr { display: block; } }
