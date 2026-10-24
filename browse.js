@@ -1,4 +1,4 @@
-import { featuredCards, getCategories, listingCard, searchListings } from "./site.js";
+import { el, featuredCards, getCategories, listingCard, searchListings } from "./site.js";
 
 featuredCards().then((cards) => {
   if (!cards.length) return;
@@ -57,6 +57,7 @@ async function load(reset) {
     status.textContent = shown
       ? `${shown} ${shown === 1 ? "listing" : "listings"}${page.length === PAGE_SIZE ? " so far" : ""}`
       : "No listings match. Try a different search or type.";
+    if (!shown && (query.search_text || query.kind || query.category)) status.append(" ", alertMeButton(query));
     more.hidden = page.length < PAGE_SIZE;
   } catch {
     status.textContent = "We couldn't load listings right now. Please try again later.";
@@ -149,4 +150,17 @@ async function searchPeople(text) {
     avatar(p.avatar_url, p.display_name || p.username, 44),
     el("span", { class: "row-title" }, el("strong", {}, p.display_name || `@${p.username}`), el("small", {}, `@${p.username}`)),
     icon("chevronRight", "chev")))) : [el("li", { class: "cell-pad" }, "No members match.")]));
+}
+
+// M187: "Alert me when one is posted" on an empty search (signed-in members; same alerts as the apps).
+function alertMeButton(q) {
+  const button = el("button", { type: "button", class: "button secondary" }, "Alert me when one is posted");
+  button.addEventListener("click", async () => {
+    const { supabase, currentUser, signInURL, friendlyError } = await import("./auth.js");
+    if (!(await currentUser())) { location.href = signInURL(); return; }
+    button.disabled = true;
+    const { error } = await supabase.rpc("save_search_alert", { search_text: q.search_text, kind: q.kind, format: q.format, category: q.category });
+    button.textContent = error ? friendlyError(error) : "Saved. We'll notify you when a match is posted (Profile → Settings → Search Alerts).";
+  });
+  return button;
 }

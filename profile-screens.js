@@ -1084,6 +1084,28 @@ async function invites(ctx) {
 
 // --- Router ----------------------------------------------------------------------------------------------------------
 
+// M187: Settings → Search Alerts (saved from an empty search; a match posted later sends a notification).
+async function searchAlerts(ctx) {
+  const { data, error } = await supabase.from("search_alerts").select("id, search_text, kind, format, last_alerted_at").order("created_at", { ascending: false });
+  if (error) throw error;
+  const title = (a) => {
+    const type = a.format === "auction" ? "auctions" : a.format === "rental" ? "tools for rent" : a.kind === "rental" ? "homes for rent"
+      : a.kind === "property_sale" ? "homes for sale" : a.kind === "service" ? "services" : a.kind === "job" ? "jobs" : null;
+    return [a.search_text ? `“${a.search_text}”` : "New listings", type].filter(Boolean).join(" · ");
+  };
+  if (!(data ?? []).length) return [el("p", { class: "hint" }, "No alerts yet. When a search finds nothing, choose Alert Me When One Is Posted.")];
+  return [el("ul", { class: "group" }, ...data.map((a) => {
+    const remove = el("button", { type: "button", class: "link-button danger" }, "Remove");
+    remove.addEventListener("click", async () => {
+      const { error: e } = await supabase.from("search_alerts").delete().eq("id", a.id);
+      if (e) return ctx.fail(friendlyError(e));
+      ctx.reload();
+    });
+    return el("li", { class: "row" }, el("span", { class: "row-title" }, el("strong", {}, title(a)),
+      el("small", {}, a.last_alerted_at ? "Has found matches" : "No matches yet")), remove);
+  }))];
+}
+
 const SCREENS = {
   bids: ["My Bids", bids], purchases: ["Purchases", purchases], sales: ["Sales", sales], requests: ["Purchase Requests", requests],
   listings: ["My Listings", listings], watching: ["Watching", watching], favorites: ["Favorites", favorites], rentals: ["Rentals", rentals],
@@ -1091,6 +1113,7 @@ const SCREENS = {
   licenses: ["Professional Licenses", licenses], milestone: ["Milestone Level", milestone], address: ["Home Address", address],
   "follows-followers": ["Followers", (ctx) => follows(ctx, "followers")], "follows-following": ["Following", (ctx) => follows(ctx, "following")],
   "follows-contacts": ["Contacts", (ctx) => follows(ctx, "contacts")], blocked: ["Blocked Users", blocked],
+  "search-alerts": ["Search Alerts", searchAlerts],
 };
 const state = {};
 
