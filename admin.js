@@ -221,7 +221,8 @@ async function overview() {
     ),
     groupTitle("Calendar"),
     group(stat("Business Calendar", "Deadlines", { detail: "Federal and California taxes, filings, renewals", iconName: "calendar", tint: "red", href: "#calendar" }),
-      owner ? stat("Shared Pages", "Write", { detail: "Pages anyone with the link can read, or private", iconName: "doc", tint: "blue", href: "#pages" }) : null),
+      owner ? stat("Shared Pages", "Write", { detail: "Pages anyone with the link can read, or private", iconName: "doc", tint: "blue", href: "#pages" }) : null,
+      owner ? stat("Tax Forms", "Open", { detail: "Schedule C, SE, 8829, 4562, 8995, California 568 and more, filled from the books", iconName: "doc", tint: "orange", href: "#tax-forms" }) : null),
     booksOwner ? groupTitle("Geerho Tech LLC") : null,
     booksOwner ? group(stat("Company Books", "Open", { detail: "Expenses, Stripe income, mileage, profit · Geerho, Xenpen, Klean", iconName: "dollar", tint: "green", href: "#books" }),
                        stat("Tax Helper", "Open", { detail: "Reimburse yourself · home office (Form 8829) · car · W-9s and 1099s", iconName: "dollar", tint: "orange", href: "#tax" }),
@@ -2112,7 +2113,16 @@ async function taxHelper() {
   let body = [];
   if (st.tab === "reimburse") {
     const items = d.this_month.items ?? [];
-    body = [groupTitle(`This month (${monthText(d.this_month.month)})`),
+    // M201: Mercury deposits that aren't yours or a Stripe payout: say what each one is so the forms are right.
+    const review = (d.income_to_review ?? []).length ? [groupTitle("Money in to check"), group(...d.income_to_review.map((m) => {
+      const pick = el("select", { "aria-label": "What is this?" }, ...options({ "": "What is this?", "subscription:geerho": "App Store or Google Play payout (Geerho)",
+        "subscription:klean": "App Store or Google Play payout (Klean)", "other:company": "Other business income or a refund", "interest:company": "Interest",
+        "not_business:company": "Not business money" }, ""));
+      pick.addEventListener("change", () => { if (!pick.value) return; const [kind, app] = pick.value.split(":"); run("books_review_income", { income: m.id, kind, app }); });
+      return el("li", { class: "kv" }, el("span", { class: "kv-label" }, `${m.description ?? "Deposit"} · ${dayText(String(m.occurred_at).slice(0, 10))}`),
+        el("span", { class: "kv-value" }, usd(m.amount_cents), " ", pick));
+    })), hint("Deposits into Mercury that aren't yours or a Stripe payout. Interest goes on Schedule B, not Schedule C.")] : [];
+    body = [...review, groupTitle(`This month (${monthText(d.this_month.month)})`),
       group(...items.map((i) => kv(i.label, usd(i.cents))), kv("So far", usd(items.reduce((s, i) => s + Number(i.cents), 0)))),
       hint("Mark an expense \"Paid with my personal money\" in Company Books and it shows here. On the 1st, Geerho adds up last month and notifies you."),
       groupTitle("Monthly owner expense reports"),
@@ -2276,6 +2286,90 @@ async function taxHelper() {
   show(back("Tax Helper"), yearRow, tabs, hint("Bookkeeping for your CPA, not tax advice. Your CPA confirms what you claim."), err, ...body.flat());
 }
 
+// --- M203 Tax Forms (TJ, 2026-10-24), like the apps: every Super Admin picks a form and opens it filled from the
+// Company Books; the tax-forms function fetches the official PDF and checks it's the version Tax Helper knows. Super
+// Admin 1 edits the business details. Never fills an SSN.
+const taxFormsState = { year: new Date().getFullYear() - 1, selected: null };
+const TAX_FORM_STATUS = { ready: "Ready", draft: "Draft (this year's form isn't out yet)", needs_update: "New version: needs a check", unavailable: "Can't reach the form's website" };
+
+async function taxForms() {
+  show(back("Tax Forms"), loading());
+  if (role !== "owner") { location.hash = ""; return; }
+  const st = taxFormsState;
+  const err = el("p", { class: "status bad", role: "alert", hidden: true });
+  const fail = (e) => { err.textContent = typeof e === "string" ? e : friendlyError(e); err.hidden = false; };
+  const button = (text, onClick, cls = "button") => { const b = el("button", { type: "button", class: cls }, text); b.addEventListener("click", onClick); return b; };
+  const yearRow = el("div", { class: "actions-row" },
+    button("‹", () => { if (st.year > 2026) { st.year--; taxForms(); } }, "button secondary"), el("strong", {}, ` Tax year ${st.year} `),
+    button("›", () => { if (st.year < new Date().getFullYear()) { st.year++; taxForms(); } }, "button secondary"));
+  show(back("Tax Forms"), yearRow, el("p", { class: "status-line", role: "status" }, "Checking the forms on irs.gov and ftb.ca.gov…"));
+  const [{ data: list, error }, data] = await Promise.all([
+    supabase.functions.invoke("tax-forms", { body: { action: "list", year: st.year } }),
+    rpc("tax_forms_data", { year: st.year }).catch(() => null),
+  ]);
+  if (error || !list?.forms) { show(back("Tax Forms"), yearRow, errorBox("Couldn't load the forms. Try again.")); return; }
+  if (!list.forms.some((f) => f.key === st.selected)) st.selected = list.forms[0]?.key;
+  const picker = el("select", { "aria-label": "Form" }, ...list.forms.map((f) => el("option", { value: f.key, ...(f.key === st.selected ? { selected: "" } : {}) },
+    (f.needed ? "" : "(Not needed) ") + f.title)));
+  const detail = el("div", {});
+  const info = el("p", { class: "group-footer" });
+  const open = button("Open the filled form", async () => {
+    open.disabled = true; open.textContent = "Filling…"; err.hidden = true; info.textContent = "";
+    const w = window.open("", "_blank");
+    try {
+      const { data: r, error: e } = await supabase.functions.invoke("tax-forms", { body: { action: "fill", form: st.selected, year: st.year } });
+      if (e || !r?.pdf) { w?.close(); fail(r?.note ?? "Couldn't fill this form."); return; }
+      const bytes = Uint8Array.from(atob(r.pdf), (c) => c.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      if (w) w.location.href = url; else location.href = url;
+      const a = el("a", { href: url, download: r.filename ?? "form.pdf" }, "Download the PDF");
+      info.replaceChildren(r.note ? `${r.note} ` : "", a);
+    } catch (x) { w?.close(); fail(x); }
+    finally { open.disabled = false; open.textContent = "Open the filled form"; }
+  });
+  const showDetail = () => {
+    const f = list.forms.find((x) => x.key === st.selected);
+    detail.replaceChildren(f ? group(kv("Version", f.published ?? "—"), kv("Status", TAX_FORM_STATUS[f.status] ?? f.status)) : "",
+      f?.note ? hint(f.note) : "");
+    open.disabled = !f || ["needs_update", "unavailable"].includes(f.status);
+  };
+  picker.addEventListener("change", () => { st.selected = picker.value; showDetail(); });
+  showDetail();
+
+  let details = null;
+  if (data?.can_edit) {
+    const p = data.profile ?? {}, c = data.sch_c ?? {}, v = c.vehicle ?? {};
+    const input = (label, value, attrs = {}) => { const i = el("input", { value: value ?? "", "aria-label": label, placeholder: label, ...attrs }); return [i, el("label", {}, label, i)]; };
+    const [owner, ownerL] = input("Owner's name", p.owner_name), [biz, bizL] = input("Business name", p.business_name), [ein, einL] = input("EIN (12-3456789)", p.ein);
+    const [sos, sosL] = input("California SOS file number", p.ca_sos_number), [addr, addrL] = input("Business address", p.address_line);
+    const [city, cityL] = input("City, state ZIP (Lemoore, CA 93245)", p.city_state_zip), [code, codeL] = input("Schedule C business code (6 digits)", p.business_code, { inputmode: "numeric" });
+    const [desc, descL] = input("What the business does", p.business_description), [start, startL] = input("Business started on", data.business_started_on, { type: "date" });
+    const car = el("select", { "aria-label": "Car" }, ...options({ standard: "Standard mileage rate", actual: "Actual costs" }, c.car_method ?? "standard"));
+    const [veh, vehL] = input("Car first used for the business", v.in_service_on, { type: "date" });
+    const [comm, commL] = input(`Commuting miles in ${st.year}`, Number(v.commuting_miles) || "", { type: "number", min: "0" });
+    const [w2, w2L] = input("Your W-2 Social Security wages (box 3)", Number(data.se?.["8a"]) ? (data.se["8a"] / 100).toFixed(2) : "", { type: "number", min: "0", step: "0.01" });
+    const [qbi, qbiL] = input("Business loss carried from last year (8995 line 16)", Number(data.f8995?.["3"]) ? (-data.f8995["3"] / 100).toFixed(2) : "", { type: "number", min: "0", step: "0.01" });
+    const cents = (x) => x.value === "" ? 0 : Math.round(parseFloat(x.value) * 100);
+    const save = button("Save business details", async () => {
+      try {
+        await rpc("tax_save_profile", { owner_name: owner.value.trim() || null, business_name: biz.value.trim() || null, ein: ein.value.trim() || null,
+          ca_sos_number: sos.value.trim() || null, address_line: addr.value.trim() || null, city_state_zip: city.value.trim() || null,
+          business_code: code.value.trim() || null, business_description: desc.value.trim() || null, business_started_on: start.value || null });
+        await rpc("tax_save_year_details", { year: st.year, car_method: car.value, vehicle_in_service_on: veh.value || null,
+          commuting_miles: Number(comm.value) || 0, w2_ss_wages_cents: cents(w2), qbi_loss_carryforward_cents: cents(qbi) });
+        taxForms();
+      } catch (x) { fail(x); }
+    });
+    details = [groupTitle("Business details (only you can change these)"),
+      el("div", { class: "form-stack" }, ownerL, bizL, einL, sosL, addrL, cityL, codeL, descL, startL, el("label", {}, "Car", car), vehL, commL, w2L, qbiL, save),
+      hint("The start date decides which costs are startup costs (before) and which are deducted as you go (after). Choose the business code with your CPA.")];
+  }
+  show(back("Tax Forms"), yearRow, el("div", { class: "form-stack" }, el("label", {}, "Form", picker)), detail, open, info, err,
+    hint("Each form is downloaded from the IRS or California FTB, checked to be the version Tax Helper knows, and filled from Company Books (Stripe, Mercury and everything you recorded). Write your Social Security number by hand. Have your CPA review before you file."),
+    (list.notes ?? []).length ? [groupTitle("Check these"), group(...list.notes.map((n) => el("li", { class: "kv" }, el("span", { class: "kv-label" }, n))))] : null,
+    ...(details ?? []));
+}
+
 async function route() {
   const [name, arg] = location.hash.replace(/^#/, "").split("/");
   try {
@@ -2312,6 +2406,7 @@ async function route() {
       case "books": return await books();
       case "ai-office": return await aiOffice(arg);
       case "tax": return await taxHelper();
+      case "tax-forms": return await taxForms();
       case "calendar": return await businessCalendar();
       case "pages": return await sharedPages(arg);
       case "propose": return proposeCategory();
