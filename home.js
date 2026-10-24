@@ -7,6 +7,12 @@ featuredCards().then((cards) => {
   document.getElementById("featured-section").hidden = false;
 });
 
+// The search's "Everything" choice is left out of the link (browse.html?q=… instead of …&format=).
+document.querySelector(".hero-search")?.addEventListener("submit", (e) => {
+  const f = e.target.elements.format;
+  if (f && !f.value) f.removeAttribute("name");
+});
+
 const list = document.getElementById("latest");
 const status = document.getElementById("latest-status");
 

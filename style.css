@@ -475,6 +475,8 @@ body { overflow-x: clip; }
 .hero-search .icon { width: 20px; height: 20px; color: #6e6e73; flex: none; }
 .hero-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; color: #1d1d1f; padding: 10px 0; }
 .hero-search input::placeholder { color: #6e6e73; }
+.hero-search select { border: 0; border-left: 1px solid #e5e5ea; background: transparent; font: inherit; color: #1d1d1f; padding: 10px 6px; max-width: 9.5em; cursor: pointer; }
+@media (max-width: 520px) { .hero-search { flex-wrap: wrap; } .hero-search select { border-left: 0; max-width: none; flex: 1; } }
 .hero-search button { border: 0; border-radius: 12px; padding: 10px 18px; font: inherit; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(135deg, #e11d2a, #c8102e); }
 .hero-search:focus-within { outline: 3px solid #fff; outline-offset: 3px; }
 .hero-copy .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0 0; }
